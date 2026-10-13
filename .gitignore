@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+
+# macOS and IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime data
+logs/
+data/raw/
+artifacts/
+models/
+vector_data/
+
+# Model weights
+*.safetensors
+*.gguf
+*.bin
