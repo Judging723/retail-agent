@@ -30,3 +30,4 @@ vector_data/
 *.safetensors
 *.gguf
 *.bin
+*.egg-info/
