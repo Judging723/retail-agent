@@ -10,7 +10,6 @@ from app.core.config import get_settings
 from app.core.database import build_database_url
 from app.models import Base
 
-
 config = context.config
 
 if config.config_file_name is not None:
