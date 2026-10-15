@@ -11,8 +11,11 @@ logger = logging.getLogger("app.request")
 async def request_logging_middleware(request: Request, call_next):
     # 1. 读取 X-Request-ID 请求头，没有则生成 uuid
     request_id = request.headers.get("X-Request-ID")
+
     if not request_id:
         request_id = str(uuid4())
+
+    request.state.request_id = request_id
 
     # 2. 记录开始时间
     start_time = perf_counter()
@@ -38,7 +41,7 @@ async def request_logging_middleware(request: Request, call_next):
         )
         return response
 
-    except Exception as exc:
+    except Exception:
         # 捕获异常，自动打印堆栈，不吞异常，最后继续抛出
         duration_ms = (perf_counter() - start_time) * 1000
         logger.exception(
