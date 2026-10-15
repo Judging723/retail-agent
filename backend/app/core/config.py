@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,13 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    db_host: str = "127.0.0.1"
+    db_port: int = 3307
+    db_name: str = "retail_agent"
+    db_user: str = "retail_app"
+    db_password: SecretStr = SecretStr("")
+    db_echo: bool = False
 
 
 @lru_cache
