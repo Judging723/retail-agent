@@ -1,12 +1,17 @@
-from datetime import datetime
+from __future__ import annotations
 
-from sqlalchemy import BigInteger, DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING
 
-from app.models.base import Base
+from sqlalchemy import BigInteger, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.conversation import Conversation
 
 
-class Customer(Base):
+class Customer(TimestampMixin, Base):
     __tablename__ = "customers"
 
     id: Mapped[int] = mapped_column(
@@ -23,14 +28,8 @@ class Customer(Base):
         String(100),
         nullable=True,
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
+
+    conversations: Mapped[list[Conversation]] = relationship(
+        back_populates="customer",
+        passive_deletes="all",
     )
