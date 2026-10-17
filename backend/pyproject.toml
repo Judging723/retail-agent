@@ -31,6 +31,9 @@ include = ["app*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: tests that require a running MySQL database",
+]
 
 [tool.ruff]
 line-length = 100
