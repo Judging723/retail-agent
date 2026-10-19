@@ -42,6 +42,7 @@ class ConversationRepository:
                 selectinload(Conversation.customer),
                 selectinload(Conversation.messages),
             )
+            .execution_options(populate_existing=True)
         )
         return await self._session.scalar(statement)
 
