@@ -46,9 +46,7 @@ async def test_conversation_lifecycle(
     assert message.role == MessageRole.USER
     assert message.created_at is not None
 
-    loaded = await service.get_conversation(
-        conversation.conversation_no
-    )
+    loaded = await service.get_conversation(conversation.conversation_no)
 
     assert loaded.customer.customer_no == customer_no
     assert len(loaded.messages) == 1
@@ -90,3 +88,23 @@ async def test_closed_conversation_rejects_new_message(
             conversation_no=conversation.conversation_no,
             content="关闭后不应该保存这条消息",
         )
+
+
+async def test_existing_customer_can_create_multiple_conversations(
+    db_session: AsyncSession,
+) -> None:
+    suffix = uuid4().hex[:12]
+    customer_no = f"CUST-SERVICE-{suffix}"
+
+    service = ConversationService(db_session)
+    conversation1, customer1 = await service.create_conversation(
+        customer_no=customer_no,
+        display_name="Service 测试用户",
+    )
+    conversation2, customer2 = await service.create_conversation(
+        customer_no=customer_no,
+        display_name="Service 测试用户",
+    )
+    assert customer1.id == customer2.id
+    assert conversation1.id != conversation2.id
+    assert conversation1.conversation_no != conversation2.conversation_no
