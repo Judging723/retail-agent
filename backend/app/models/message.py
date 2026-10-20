@@ -57,9 +57,7 @@ class Message(CreatedAtMixin, Base):
             native_enum=False,
             create_constraint=True,
             length=20,
-            values_callable=lambda enum_type: [
-                item.value for item in enum_type
-            ],
+            values_callable=lambda enum_type: [item.value for item in enum_type],
         ),
         nullable=False,
     )

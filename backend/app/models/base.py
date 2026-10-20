@@ -11,8 +11,10 @@ NAMING_CONVENTION = {
     "pk": "pk_%(table_name)s",
 }
 
+
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
 
 class CreatedAtMixin:
     created_at: Mapped[datetime] = mapped_column(
@@ -20,6 +22,7 @@ class CreatedAtMixin:
         nullable=False,
         server_default=func.now(),
     )
+
 
 class TimestampMixin(CreatedAtMixin):
     updated_at: Mapped[datetime] = mapped_column(

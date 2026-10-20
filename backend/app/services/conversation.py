@@ -32,9 +32,7 @@ class ConversationService:
         display_name: str | None,
     ) -> tuple[Conversation, Customer]:
         async with self._session.begin():
-            customer = await self._customers.get_by_customer_no(
-                customer_no
-            )
+            customer = await self._customers.get_by_customer_no(customer_no)
 
             if customer is None:
                 customer = await self._customers.create(
@@ -59,11 +57,7 @@ class ConversationService:
         content: str,
     ) -> Message:
         async with self._session.begin():
-            conversation = (
-                await self._conversations.get_by_conversation_no(
-                    conversation_no
-                )
-            )
+            conversation = await self._conversations.get_by_conversation_no(conversation_no)
 
             if conversation is None:
                 raise ConversationNotFoundError(conversation_no)
@@ -79,9 +73,7 @@ class ConversationService:
                 )
             except RepositoryConversationNotFoundError as exc:
                 # 防止查询后、加锁前会话被其他事务删除。
-                raise ConversationNotFoundError(
-                    conversation_no
-                ) from exc
+                raise ConversationNotFoundError(conversation_no) from exc
 
             await self._session.refresh(message)
 
@@ -92,11 +84,7 @@ class ConversationService:
         conversation_no: str,
     ) -> Conversation:
         async with self._session.begin():
-            conversation = (
-                await self._conversations.get_by_conversation_no(
-                    conversation_no
-                )
-            )
+            conversation = await self._conversations.get_by_conversation_no(conversation_no)
 
             if conversation is None:
                 raise ConversationNotFoundError(conversation_no)

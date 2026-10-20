@@ -54,18 +54,16 @@ class ConversationRepository:
         content: str,
     ) -> Message:
         locked_conversation_id = await self._session.scalar(
-            select(Conversation.id)
-            .where(Conversation.id == conversation_id)
-            .with_for_update()
+            select(Conversation.id).where(Conversation.id == conversation_id).with_for_update()
         )
 
         if locked_conversation_id is None:
             raise ConversationNotFoundError(conversation_id)
 
         next_sequence_no = await self._session.scalar(
-            select(
-                func.coalesce(func.max(Message.sequence_no), 0) + 1
-            ).where(Message.conversation_id == conversation_id)
+            select(func.coalesce(func.max(Message.sequence_no), 0) + 1).where(
+                Message.conversation_id == conversation_id
+            )
         )
 
         if next_sequence_no is None:

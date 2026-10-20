@@ -10,7 +10,6 @@ from app.repositories import (
     CustomerRepository,
 )
 
-
 pytestmark = [
     pytest.mark.anyio,
     pytest.mark.integration,
@@ -59,9 +58,7 @@ async def test_create_and_load_conversation(
     # 清除当前 Session 中的缓存状态，确保下面的数据从数据库重载。
     db_session.expire_all()
 
-    loaded = await conversations.get_by_conversation_no(
-        conversation_no
-    )
+    loaded = await conversations.get_by_conversation_no(conversation_no)
 
     assert loaded is not None
     assert loaded.customer.customer_no == customer_no

@@ -45,9 +45,7 @@ class Conversation(TimestampMixin, Base):
             native_enum=False,
             create_constraint=True,
             length=32,
-            values_callable=lambda enum_type: [
-                item.value for item in enum_type
-            ],
+            values_callable=lambda enum_type: [item.value for item in enum_type],
         ),
         nullable=False,
         default=ConversationStatus.OPEN,

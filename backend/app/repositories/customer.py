@@ -12,9 +12,7 @@ class CustomerRepository:
         self,
         customer_no: str,
     ) -> Customer | None:
-        statement = select(Customer).where(
-            Customer.customer_no == customer_no
-        )
+        statement = select(Customer).where(Customer.customer_no == customer_no)
         return await self._session.scalar(statement)
 
     async def create(
