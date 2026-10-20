@@ -200,3 +200,67 @@ async def test_add_message_to_closed_conversation_returns_409(
     )
 
     assert message_count == 0
+
+
+async def test_get_conversation_returns_ordered_messages(
+    api_client: AsyncClient,
+) -> None:
+    suffix = uuid4().hex[:12]
+
+    create_response = await api_client.post(
+        "/api/v1/conversations",
+        json={
+            "customer_no": f"CUST-DETAIL-{suffix}",
+            "display_name": "详情测试用户",
+        },
+    )
+    assert create_response.status_code == 201
+
+    conversation_no = create_response.json()["conversation_no"]
+
+    contents = [
+        "第一条消息",
+        "第二条消息",
+    ]
+
+    for content in contents:
+        message_response = await api_client.post(
+            f"/api/v1/conversations/{conversation_no}/messages",
+            json={"content": content},
+        )
+        assert message_response.status_code == 201
+
+    response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["conversation_no"] == conversation_no
+    assert body["customer_no"] == f"CUST-DETAIL-{suffix}"
+    assert body["status"] == "open"
+    assert body["summary"] is None
+    assert body["created_at"] is not None
+    assert body["updated_at"] is not None
+
+    assert [message["sequence_no"] for message in body["messages"]] == [1, 2]
+
+    assert [message["content"] for message in body["messages"]] == contents
+
+
+async def test_get_missing_conversation_returns_404(
+    api_client: AsyncClient,
+) -> None:
+    conversation_no = "CONV-00000000000000000000"
+
+    response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
+
+    assert response.status_code == 404
+
+    body = response.json()
+
+    assert body["error"]["code"] == "conversation_not_found"
+    assert body["error"]["details"] == {
+        "conversation_no": conversation_no,
+    }
+    assert response.headers["X-Request-ID"] == body["error"]["request_id"]

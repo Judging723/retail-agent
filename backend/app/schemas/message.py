@@ -14,10 +14,13 @@ class MessageCreateRequest(BaseModel):
     )
 
 
-class MessageCreateResponse(BaseModel):
+class MessageResponse(BaseModel):
     message_id: int
-    conversation_no: str
     sequence_no: int
     role: MessageRole
     content: str
     created_at: datetime
+
+
+class MessageCreateResponse(MessageResponse):
+    conversation_no: str

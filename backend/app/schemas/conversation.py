@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import ConversationStatus
+from app.schemas.message import MessageResponse
 
 
 class ConversationCreateRequest(BaseModel):
@@ -17,3 +18,13 @@ class ConversationCreateResponse(BaseModel):
     customer_no: str
     status: ConversationStatus
     created_at: datetime
+
+
+class ConversationDetailResponse(BaseModel):
+    conversation_no: str
+    customer_no: str
+    status: ConversationStatus
+    summary: str | None
+    created_at: datetime
+    updated_at: datetime
+    messages: list[MessageResponse]
