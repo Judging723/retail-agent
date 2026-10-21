@@ -56,6 +56,31 @@ class ConversationService:
         conversation_no: str,
         content: str,
     ) -> Message:
+        return await self._add_message(
+            conversation_no=conversation_no,
+            role=MessageRole.USER,
+            content=content,
+        )
+
+    async def add_assistant_message(
+        self,
+        *,
+        conversation_no: str,
+        content: str,
+    ) -> Message:
+        return await self._add_message(
+            conversation_no=conversation_no,
+            role=MessageRole.ASSISTANT,
+            content=content,
+        )
+
+    async def _add_message(
+        self,
+        *,
+        conversation_no: str,
+        role: MessageRole,
+        content: str,
+    ) -> Message:
         async with self._session.begin():
             conversation = await self._conversations.get_by_conversation_no(conversation_no)
 
@@ -68,11 +93,10 @@ class ConversationService:
             try:
                 message = await self._conversations.append_message(
                     conversation_id=conversation.id,
-                    role=MessageRole.USER,
+                    role=role,
                     content=content,
                 )
             except RepositoryConversationNotFoundError as exc:
-                # 防止查询后、加锁前会话被其他事务删除。
                 raise ConversationNotFoundError(conversation_no) from exc
 
             await self._session.refresh(message)

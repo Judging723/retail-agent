@@ -108,3 +108,44 @@ async def test_existing_customer_can_create_multiple_conversations(
     assert customer1.id == customer2.id
     assert conversation1.id != conversation2.id
     assert conversation1.conversation_no != conversation2.conversation_no
+
+
+async def test_service_adds_user_and_assistant_messages(
+    db_session: AsyncSession,
+) -> None:
+    suffix = uuid4().hex[:12]
+    service = ConversationService(db_session)
+
+    conversation, _ = await service.create_conversation(
+        customer_no=f"CUST-ASSISTANT-{suffix}",
+        display_name="助手消息测试用户",
+    )
+
+    user_message = await service.add_user_message(
+        conversation_no=conversation.conversation_no,
+        content="我的订单什么时候发货？",
+    )
+    assistant_message = await service.add_assistant_message(
+        conversation_no=conversation.conversation_no,
+        content="请提供订单编号。",
+    )
+
+    assert user_message.sequence_no == 1
+    assert user_message.role == MessageRole.USER
+
+    assert assistant_message.sequence_no == 2
+    assert assistant_message.role == MessageRole.ASSISTANT
+
+    loaded = await service.get_conversation(conversation.conversation_no)
+
+    assert [message.sequence_no for message in loaded.messages] == [1, 2]
+
+    assert [message.role for message in loaded.messages] == [
+        MessageRole.USER,
+        MessageRole.ASSISTANT,
+    ]
+
+    assert [message.content for message in loaded.messages] == [
+        "我的订单什么时候发货？",
+        "请提供订单编号。",
+    ]
