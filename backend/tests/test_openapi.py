@@ -21,3 +21,9 @@ def test_conversation_routes_document_error_responses(
     error_schema = detail_responses["404"]["content"]["application/json"]["schema"]
 
     assert error_schema == {"$ref": "#/components/schemas/ErrorResponse"}
+
+    agent_responses = paths["/api/v1/conversations/{conversation_no}/agent-replies"]["post"][
+        "responses"
+    ]
+
+    assert {"201", "404", "409", "422", "503"} <= set(agent_responses)

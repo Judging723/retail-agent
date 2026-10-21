@@ -1,6 +1,9 @@
 from fastapi import APIRouter, status
 
-from app.api.dependencies import ConversationServiceDependency
+from app.api.dependencies import (
+    ConversationServiceDependency,
+    CustomerSupportAgentDependency,
+)
 from app.schemas.conversation import (
     ConversationCreateRequest,
     ConversationCreateResponse,
@@ -109,6 +112,49 @@ async def add_user_message(
     message = await service.add_user_message(
         conversation_no=conversation_no,
         content=payload.content,
+    )
+
+    return MessageCreateResponse(
+        message_id=message.id,
+        conversation_no=conversation_no,
+        sequence_no=message.sequence_no,
+        role=message.role,
+        content=message.content,
+        created_at=message.created_at,
+    )
+
+
+@router.post(
+    "/{conversation_no}/agent-replies",
+    response_model=MessageCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "Conversation not found",
+        },
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "Conversation is closed",
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ErrorResponse,
+            "description": "Request validation failed",
+        },
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": ErrorResponse,
+            "description": "Model service unavailable",
+        },
+    },
+)
+async def create_agent_reply(
+    conversation_no: str,
+    payload: MessageCreateRequest,
+    agent: CustomerSupportAgentDependency,
+) -> MessageCreateResponse:
+    message = await agent.respond(
+        conversation_no=conversation_no,
+        user_content=payload.content,
     )
 
     return MessageCreateResponse(
