@@ -1,13 +1,11 @@
-from app.services.conversation import ConversationService
-from app.services.exceptions import (
+from app.services.conversation import (
     ConversationClosedError,
     ConversationNotFoundError,
-    ServiceError,
+    ConversationService,
 )
 
 __all__ = [
     "ConversationClosedError",
     "ConversationNotFoundError",
     "ConversationService",
-    "ServiceError",
 ]

@@ -1,70 +1,119 @@
-# Ecommerce AI Customer Service Platform
+# Retail Agent
 
-一个面向学习与工程实践的电商智能客服平台，计划整合 RAG、Agent、自然语言理解、模型微调、量化和私有化部署能力。
+一个用于学习和作品展示的电商客服项目。当前目标不是模拟大型生产平台，而是先完成一个可以运行、可以解释的最小聊天闭环。
 
-> 当前状态：项目规划与基础工程搭建中。仓库中的功能、评测结果和性能指标将随开发进度逐步补充，不代表已经达到生产环境标准。
+## 当前能力
 
-## 项目目标
+- 使用 FastAPI 提供 HTTP API
+- 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话与消息
+- 调用 DeepSeek 等 OpenAI 兼容模型生成客服回复
+- 保存并传递多轮对话历史
+- 使用少量自动化测试验证核心流程
 
-本项目希望实现一套可运行、可测试、可评估的电商智能客服系统，而不仅是一个调用大模型 API 的聊天页面。
+尚未实现 Vue 前端、RAG、订单工具、模型微调和量化。
 
-系统最终将覆盖两条核心链路：
+## 核心流程
 
-### 在线应用链路
+```text
+客户端
+  ↓
+FastAPI Router
+  ↓
+ConversationService
+  ├── SQLAlchemy → MySQL
+  └── OpenAICompatibleLLMClient → DeepSeek API
+```
 
-用户请求经过意图识别和情感分析后，由 Agent 决定调用知识库、订单、物流、退款或人工转接工具，并通过大语言模型生成最终回复。
+项目刻意只保留三层：
 
-### 离线模型链路
+- Router：接收请求并返回响应
+- ConversationService：组织创建会话、构造上下文和保存消息
+- Model/LLM Client：分别负责数据库映射和模型调用
 
-业务数据经过清洗、脱敏和标注后，用于训练意图分类、情感分类、Embedding、Reranker 和客服生成模型。模型经过评测、量化和注册后，才能部署到在线推理服务。
+## API
 
-## 计划实现的能力
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | 健康检查 |
+| `POST` | `/api/v1/conversations` | 创建会话 |
+| `POST` | `/api/v1/conversations/{conversation_no}/chat` | 发送消息并获取模型回复 |
+| `GET` | `/api/v1/conversations/{conversation_no}` | 获取会话历史 |
 
-- 基于 FastAPI 的客服后端服务
-- 基于 Vue 3 的客服聊天与管理界面
-- 多轮对话与会话状态管理
-- 意图识别、实体抽取和情感分析
-- 文档解析、切片、向量化和知识库管理
-- 混合检索、Reranker 和答案来源引用
-- 订单、物流、退款和人工转接工具
-- Agent 工具选择与执行流程
-- 离线评测集和自动化回归测试
-- LoRA/QLoRA 模型微调实验
-- 模型量化与私有化推理服务
-- Docker Compose 本地部署
-- 日志、监控、权限控制和审计记录
+启动服务后可访问 `http://127.0.0.1:8000/docs` 查看交互式 API 文档。
 
-## 设计原则
+## 本地运行
 
-- 先建立可靠的业务闭环，再进行大模型微调
-- 在线应用与离线训练相互隔离
-- 所有业务工具必须进行参数校验和权限检查
-- RAG 回答必须尽可能提供知识来源
-- 模型效果必须通过固定评测集验证
-- 不使用未经验证的宣传性指标
-- 公共仓库只使用公开数据、合成数据或脱敏数据
-- 密钥、模型权重和运行时数据不得提交到 Git
+项目使用 Python 3.12。
 
-## 项目文档
+### 1. 启动 MySQL
 
-- [项目范围与验收标准](docs/PROJECT_SCOPE.md)
+```bash
+cp infra/.env.example infra/.env
+docker compose -f infra/compose.yaml up -d
+```
 
-## 当前进度
+### 2. 配置后端
 
-- [x] 明确项目方向
-- [x] 建立 Python 隔离环境
-- [x] 初始化项目文档
-- [ ] 搭建 FastAPI 基础工程
-- [ ] 设计并实现业务数据库
-- [ ] 实现基础对话链路
-- [ ] 搭建 Vue 3 前端
-- [ ] 实现生产级 RAG
-- [ ] 实现 Agent 与业务工具
-- [ ] 建立离线评测体系
-- [ ] 训练意图和情感模型
-- [ ] 进行 LLM 微调与量化
-- [ ] 完成私有化部署与项目演示
+```bash
+cd backend
+cp .env.example .env
+```
 
-## 说明
+编辑 `backend/.env`，让数据库密码与 `infra/.env` 保持一致，并填写自己的 DeepSeek API Key：
 
-本项目主要用于个人学习、工程实践和求职作品展示，不连接真实电商平台，不处理真实支付和退款操作，也不存储真实用户隐私数据。
+```ini
+RETAIL_LLM_API_BASE=https://api.deepseek.com
+RETAIL_LLM_API_KEY=你的密钥
+RETAIL_LLM_MODEL=deepseek-flash
+```
+
+`.env` 已被 Git 忽略，不要把 API Key 提交到仓库。
+
+### 3. 安装依赖并迁移数据库
+
+```bash
+python -m pip install -e ".[dev]"
+alembic upgrade head
+```
+
+### 4. 启动后端
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### 5. 运行测试
+
+```bash
+pytest -v
+ruff check app tests
+```
+
+## 目录说明
+
+```text
+backend/
+├── app/
+│   ├── api/          # HTTP 路由和依赖
+│   ├── core/         # 配置与数据库连接
+│   ├── llm/          # OpenAI 兼容模型客户端
+│   ├── models/       # SQLAlchemy 数据表映射
+│   ├── schemas/      # 请求和响应结构
+│   └── services/     # 聊天业务流程
+├── migrations/       # Alembic 数据库迁移
+└── tests/            # 核心行为测试
+infra/                 # 本地 MySQL Docker Compose
+```
+
+## 后续路线
+
+每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
+
+1. DeepSeek 多轮聊天与历史记录（当前阶段）
+2. Vue 3 最小聊天页面
+3. 基础知识库 RAG，并展示引用来源
+4. 一个合成订单查询工具
+5. 小型离线评测集
+6. 独立的微调与量化实验
+
+详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。

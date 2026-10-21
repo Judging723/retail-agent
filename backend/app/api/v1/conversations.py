@@ -1,20 +1,19 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import (
     ConversationServiceDependency,
-    CustomerSupportAgentDependency,
+    LLMClientDependency,
 )
+from app.llm import LLMUnavailableError
 from app.schemas.conversation import (
+    ChatRequest,
+    ChatResponse,
     ConversationCreateRequest,
     ConversationCreateResponse,
     ConversationDetailResponse,
-)
-from app.schemas.error import ErrorResponse
-from app.schemas.message import (
-    MessageCreateRequest,
-    MessageCreateResponse,
     MessageResponse,
 )
+from app.services import ConversationClosedError, ConversationNotFoundError
 
 router = APIRouter(
     prefix="/conversations",
@@ -26,12 +25,6 @@ router = APIRouter(
     "",
     response_model=ConversationCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        status.HTTP_422_UNPROCESSABLE_CONTENT: {
-            "model": ErrorResponse,
-            "description": "Request validation failed",
-        },
-    },
 )
 async def create_conversation(
     payload: ConversationCreateRequest,
@@ -52,18 +45,18 @@ async def create_conversation(
 @router.get(
     "/{conversation_no}",
     response_model=ConversationDetailResponse,
-    responses={
-        status.HTTP_404_NOT_FOUND: {
-            "model": ErrorResponse,
-            "description": "Conversation not found",
-        },
-    },
 )
 async def get_conversation(
     conversation_no: str,
     service: ConversationServiceDependency,
 ) -> ConversationDetailResponse:
-    conversation = await service.get_conversation(conversation_no)
+    try:
+        conversation = await service.get_conversation(conversation_no)
+    except ConversationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        ) from exc
 
     return ConversationDetailResponse(
         conversation_no=conversation.conversation_no,
@@ -86,78 +79,39 @@ async def get_conversation(
 
 
 @router.post(
-    "/{conversation_no}/messages",
-    response_model=MessageCreateResponse,
+    "/{conversation_no}/chat",
+    response_model=ChatResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        status.HTTP_404_NOT_FOUND: {
-            "model": ErrorResponse,
-            "description": "Conversation not found",
-        },
-        status.HTTP_409_CONFLICT: {
-            "model": ErrorResponse,
-            "description": "Conversation is closed",
-        },
-        status.HTTP_422_UNPROCESSABLE_CONTENT: {
-            "model": ErrorResponse,
-            "description": "Request validation failed",
-        },
-    },
 )
-async def add_user_message(
+async def chat(
     conversation_no: str,
-    payload: MessageCreateRequest,
+    payload: ChatRequest,
     service: ConversationServiceDependency,
-) -> MessageCreateResponse:
-    message = await service.add_user_message(
-        conversation_no=conversation_no,
-        content=payload.content,
-    )
+    llm_client: LLMClientDependency,
+) -> ChatResponse:
+    try:
+        message = await service.chat(
+            conversation_no=conversation_no,
+            user_content=payload.content,
+            llm_client=llm_client,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        ) from exc
+    except ConversationClosedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conversation is closed",
+        ) from exc
+    except LLMUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
-    return MessageCreateResponse(
-        message_id=message.id,
-        conversation_no=conversation_no,
-        sequence_no=message.sequence_no,
-        role=message.role,
-        content=message.content,
-        created_at=message.created_at,
-    )
-
-
-@router.post(
-    "/{conversation_no}/agent-replies",
-    response_model=MessageCreateResponse,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        status.HTTP_404_NOT_FOUND: {
-            "model": ErrorResponse,
-            "description": "Conversation not found",
-        },
-        status.HTTP_409_CONFLICT: {
-            "model": ErrorResponse,
-            "description": "Conversation is closed",
-        },
-        status.HTTP_422_UNPROCESSABLE_CONTENT: {
-            "model": ErrorResponse,
-            "description": "Request validation failed",
-        },
-        status.HTTP_503_SERVICE_UNAVAILABLE: {
-            "model": ErrorResponse,
-            "description": "Model service unavailable",
-        },
-    },
-)
-async def create_agent_reply(
-    conversation_no: str,
-    payload: MessageCreateRequest,
-    agent: CustomerSupportAgentDependency,
-) -> MessageCreateResponse:
-    message = await agent.respond(
-        conversation_no=conversation_no,
-        user_content=payload.content,
-    )
-
-    return MessageCreateResponse(
+    return ChatResponse(
         message_id=message.id,
         conversation_no=conversation_no,
         sequence_no=message.sequence_no,

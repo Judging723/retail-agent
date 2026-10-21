@@ -17,9 +17,7 @@ class Settings(BaseSettings):
     service_name: str = "retail-agent-backend"
     app_version: str = "0.1.0"
     environment: Literal["development", "test", "production"] = "development"
-    debug: bool = False
     api_v1_prefix: str = "/api/v1"
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     db_host: str = "127.0.0.1"
     db_port: int = 3307
@@ -27,6 +25,10 @@ class Settings(BaseSettings):
     db_user: str = "retail_app"
     db_password: SecretStr = SecretStr("")
     db_echo: bool = False
+
+    llm_api_base: str = "https://api.deepseek.com"
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model: str = "deepseek-flash"
 
 
 @lru_cache

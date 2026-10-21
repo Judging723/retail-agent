@@ -1,12 +1,14 @@
+from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db_session
+from app.llm import LLMClient, OpenAICompatibleLLMClient
 from app.services.conversation import ConversationService
-from app.agents import CustomerSupportAgent
-from app.llm import LLMClient, LLMUnavailableError
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 
@@ -21,27 +23,27 @@ def get_conversation_service(
 ConversationServiceDependency = Annotated[ConversationService, Depends(get_conversation_service)]
 
 
-def get_llm_client() -> LLMClient:
-    raise LLMUnavailableError()
+async def get_llm_client() -> AsyncIterator[LLMClient]:
+    settings = get_settings()
+    api_key = settings.llm_api_key.get_secret_value()
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM API key is not configured",
+        )
+
+    async with AsyncOpenAI(
+        api_key=api_key,
+        base_url=settings.llm_api_base,
+    ) as sdk_client:
+        yield OpenAICompatibleLLMClient(
+            client=sdk_client,
+            model=settings.llm_model,
+        )
 
 
 LLMClientDependency = Annotated[
     LLMClient,
     Depends(get_llm_client),
-]
-
-
-def get_customer_support_agent(
-    conversation_service: ConversationServiceDependency,
-    llm_client: LLMClientDependency,
-) -> CustomerSupportAgent:
-    return CustomerSupportAgent(
-        conversation_service=conversation_service,
-        llm_client=llm_client,
-    )
-
-
-CustomerSupportAgentDependency = Annotated[
-    CustomerSupportAgent,
-    Depends(get_customer_support_agent),
 ]

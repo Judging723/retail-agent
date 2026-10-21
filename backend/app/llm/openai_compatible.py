@@ -1,39 +1,29 @@
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Protocol
 
 from openai import (
     APIConnectionError,
+    AsyncOpenAI,
     InternalServerError,
     RateLimitError,
 )
 
-from app.llm.base import (
-    ChatMessage,
-    ChatResponse,
-)
-from app.llm.exceptions import (
-    LLMInvalidResponseError,
-    LLMUnavailableError,
-)
+ChatMessage = dict[str, str]
 
 
-class _CompletionsResource(Protocol):
-    async def create(self, **kwargs: Any) -> Any: ...
+class LLMUnavailableError(RuntimeError):
+    """The configured model service cannot return a usable answer."""
 
 
-class _ChatResource(Protocol):
-    completions: _CompletionsResource
-
-
-class _AsyncChatClient(Protocol):
-    chat: _ChatResource
+class LLMClient(Protocol):
+    async def chat(self, messages: Sequence[ChatMessage]) -> str: ...
 
 
 class OpenAICompatibleLLMClient:
     def __init__(
         self,
         *,
-        client: _AsyncChatClient,
+        client: AsyncOpenAI,
         model: str,
     ) -> None:
         self._client = client
@@ -41,38 +31,27 @@ class OpenAICompatibleLLMClient:
 
     async def chat(
         self,
-        *,
         messages: Sequence[ChatMessage],
-    ) -> ChatResponse:
+    ) -> str:
         try:
             completion = await self._client.chat.completions.create(
                 model=self._model,
-                messages=[
-                    {
-                        "role": message.role.value,
-                        "content": message.content,
-                    }
-                    for message in messages
-                ],
+                messages=list(messages),
             )
         except (
             APIConnectionError,
             RateLimitError,
             InternalServerError,
         ) as exc:
-            raise LLMUnavailableError() from exc
+            raise LLMUnavailableError("Model service is unavailable") from exc
 
         if not completion.choices:
-            raise LLMInvalidResponseError()
+            raise LLMUnavailableError("Model service returned an empty response")
 
         choice = completion.choices[0]
         content = choice.message.content
 
         if not isinstance(content, str) or not content.strip():
-            raise LLMInvalidResponseError()
+            raise LLMUnavailableError("Model service returned an empty response")
 
-        return ChatResponse(
-            content=content.strip(),
-            model=completion.model,
-            finish_reason=choice.finish_reason,
-        )
+        return content.strip()

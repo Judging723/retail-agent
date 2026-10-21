@@ -2,8 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import ConversationStatus
-from app.schemas.message import MessageResponse
+from app.models import ConversationStatus, MessageRole
 
 
 class ConversationCreateRequest(BaseModel):
@@ -18,6 +17,24 @@ class ConversationCreateResponse(BaseModel):
     customer_no: str
     status: ConversationStatus
     created_at: datetime
+
+
+class ChatRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class MessageResponse(BaseModel):
+    message_id: int
+    sequence_no: int
+    role: MessageRole
+    content: str
+    created_at: datetime
+
+
+class ChatResponse(MessageResponse):
+    conversation_no: str
 
 
 class ConversationDetailResponse(BaseModel):
