@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.exceptions import AppException
+from app.llm import LLMUnavailableError
 
 
 def test_404_not_found(client: TestClient) -> None:
@@ -39,3 +40,23 @@ def test_validation_error(application: FastAPI, client: TestClient) -> None:
     data = response.json()
     assert data["error"]["code"] == "validation_error"
     assert data["error"]["details"] is not None
+
+
+def test_llm_unavailable_error(
+    application: FastAPI,
+    client: TestClient,
+) -> None:
+    @application.get("/test/llm-unavailable")
+    def raise_llm_unavailable() -> None:
+        raise LLMUnavailableError()
+
+    response = client.get("/test/llm-unavailable")
+
+    assert response.status_code == 503
+
+    body = response.json()
+
+    assert body["error"]["code"] == "llm_unavailable"
+    assert body["error"]["message"] == ("Model service is temporarily unavailable")
+    assert body["error"]["details"] is None
+    assert response.headers["X-Request-ID"] == body["error"]["request_id"]

@@ -10,6 +10,7 @@ from app.llm import (
     ChatResponse,
     ChatRole,
     FakeLLMClient,
+    LLMUnavailableError,
 )
 from app.models import MessageRole
 from app.services import ConversationService
@@ -30,7 +31,7 @@ class FailingLLMClient:
         messages: Sequence[ChatMessage],
     ) -> ChatResponse:
         self.calls.append(tuple(messages))
-        raise RuntimeError("Model service unavailable")
+        raise LLMUnavailableError()
 
 
 async def test_agent_builds_prompt_and_persists_reply(
@@ -167,8 +168,8 @@ async def test_agent_keeps_user_message_when_llm_fails(
     )
 
     with pytest.raises(
-        RuntimeError,
-        match="Model service unavailable",
+        LLMUnavailableError,
+        match="temporarily unavailable",
     ):
         await agent.respond(
             conversation_no=conversation.conversation_no,

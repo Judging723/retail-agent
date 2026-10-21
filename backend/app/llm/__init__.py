@@ -5,6 +5,10 @@ from app.llm.base import (
     LLMClient,
 )
 from app.llm.fake import FakeLLMClient
+from app.llm.exceptions import (
+    LLMError,
+    LLMUnavailableError,
+)
 
 __all__ = [
     "ChatMessage",
@@ -12,4 +16,6 @@ __all__ = [
     "ChatRole",
     "FakeLLMClient",
     "LLMClient",
+    "LLMError",
+    "LLMUnavailableError",
 ]

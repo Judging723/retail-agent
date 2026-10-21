@@ -9,6 +9,7 @@ from app.services.exceptions import (
     ConversationClosedError,
     ConversationNotFoundError,
 )
+from app.llm import LLMUnavailableError
 
 
 def get_request_id(request: Request) -> str:
@@ -123,6 +124,21 @@ async def internal_exception_handler(request: Request, exc: Exception) -> JSONRe
     )
 
 
+async def llm_unavailable_exception_handler(
+    request: Request,
+    exc: LLMUnavailableError,
+) -> JSONResponse:
+    return await app_exception_handler(
+        request,
+        AppException(
+            code="llm_unavailable",
+            message=str(exc),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            details=None,
+        ),
+    )
+
+
 def register_exception_handlers(application: FastAPI) -> None:
     application.add_exception_handler(AppException, app_exception_handler)
     application.add_exception_handler(StarletteHTTPException, http_exception_handler)
@@ -134,5 +150,9 @@ def register_exception_handlers(application: FastAPI) -> None:
     application.add_exception_handler(
         ConversationClosedError,
         conversation_closed_exception_handler,
+    )
+    application.add_exception_handler(
+        LLMUnavailableError,
+        llm_unavailable_exception_handler,
     )
     application.add_exception_handler(Exception, internal_exception_handler)
