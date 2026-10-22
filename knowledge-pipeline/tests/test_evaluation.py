@@ -14,6 +14,7 @@ from knowledge_pipeline.retrieval.keyword import keyword_search
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PROJECT_ROOT.parent
 EVALUATION_PATH = PROJECT_ROOT / "eval" / "retrieval_cases.json"
+RERANKER_EVALUATION_PATH = PROJECT_ROOT / "eval" / "reranker_cases.json"
 KNOWLEDGE_PATH = REPOSITORY_ROOT / "customer-service-app" / "backend" / "data" / "knowledge.json"
 
 
@@ -58,6 +59,14 @@ def test_fixed_evaluation_set_can_be_loaded() -> None:
     assert len(cases) == 12
     assert sum(bool(case.relevant_source_ids) for case in cases) == 10
     assert sum(not case.relevant_source_ids for case in cases) == 2
+
+
+def test_reranker_evaluation_set_contains_hard_positive_cases() -> None:
+    cases = load_retrieval_cases(RERANKER_EVALUATION_PATH)
+
+    assert len(cases) == 11
+    assert all(case.relevant_source_ids for case in cases)
+    assert all("hard-negative" in case.tags for case in cases)
 
 
 def test_duplicate_case_id_is_rejected(tmp_path: Path) -> None:

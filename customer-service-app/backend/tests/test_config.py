@@ -9,6 +9,8 @@ def test_default_settings() -> None:
     assert settings.llm_model == "deepseek-flash"
     assert settings.llm_api_key.get_secret_value() == ""
     assert settings.rag_min_score == 0.52
+    assert settings.rag_reranker_enabled is True
+    assert settings.rag_reranker_candidates == 8
 
 
 def test_llm_settings_can_be_overridden(monkeypatch) -> None:

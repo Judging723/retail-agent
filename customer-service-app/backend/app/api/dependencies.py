@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.llm import LLMClient, OpenAICompatibleLLMClient
-from app.rag import KnowledgeRetriever
+from app.rag import CrossEncoderReranker, KnowledgeRetriever
 from app.services.conversation import ConversationService
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -28,10 +28,13 @@ ConversationServiceDependency = Annotated[ConversationService, Depends(get_conve
 @lru_cache
 def get_knowledge_retriever() -> KnowledgeRetriever:
     settings = get_settings()
+    reranker = CrossEncoderReranker() if settings.rag_reranker_enabled else None
     return KnowledgeRetriever.from_milvus(
         settings.milvus_uri,
         collection_name=settings.milvus_collection,
         min_score=settings.rag_min_score,
+        reranker=reranker,
+        rerank_candidates=settings.rag_reranker_candidates,
     )
 
 

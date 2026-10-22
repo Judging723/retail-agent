@@ -1,0 +1,73 @@
+{
+  "dataset_name": "Chinese Ambiguous Reference hard-negative reranking evaluation",
+  "version": "1.0.0",
+  "description": "Queries whose candidates contain multiple dialogues about the same product but different user constraints.",
+  "cases": [
+    {
+      "case_id": "apple_crisp_red_fuji",
+      "query": "我想要脆口的红富士苹果",
+      "relevant_source_ids": ["car-fdf2bfaef79ffd7d"],
+      "tags": ["hard-negative", "apple", "preference"]
+    },
+    {
+      "case_id": "apple_large_two_jin",
+      "query": "大个苹果多少钱一斤，买两斤",
+      "relevant_source_ids": ["car-278df8ff811f16e4"],
+      "tags": ["hard-negative", "apple", "quantity"]
+    },
+    {
+      "case_id": "phone_512_gift",
+      "query": "想买512G手机，有没有赠品",
+      "relevant_source_ids": ["car-b19a9b17424a9fdf"],
+      "tags": ["hard-negative", "phone", "promotion"]
+    },
+    {
+      "case_id": "phone_gaming_battery",
+      "query": "想买适合打游戏、续航好的手机",
+      "relevant_source_ids": ["car-96509126936bac36"],
+      "tags": ["hard-negative", "phone", "usage"]
+    },
+    {
+      "case_id": "phone_android_camera_screen",
+      "query": "想要安卓系统、拍照好、屏幕大一点的手机",
+      "relevant_source_ids": ["car-fdf09c5541ca2a4a"],
+      "tags": ["hard-negative", "phone", "constraints"]
+    },
+    {
+      "case_id": "lipstick_natural_skin_matte",
+      "query": "自然肤色适合什么哑光口红",
+      "relevant_source_ids": ["car-1b1ea72e841778b5"],
+      "tags": ["hard-negative", "lipstick", "skin-tone"]
+    },
+    {
+      "case_id": "lipstick_refill_shipping",
+      "query": "口红礼盒里的替芯能自选吗，包邮吗",
+      "relevant_source_ids": ["car-92144c3de78125b2"],
+      "tags": ["hard-negative", "lipstick", "shipping"]
+    },
+    {
+      "case_id": "sun_protection_size",
+      "query": "身高180体重75，防晒衣穿什么码",
+      "relevant_source_ids": ["car-32f7f65055417386"],
+      "tags": ["hard-negative", "sun-protection", "size"]
+    },
+    {
+      "case_id": "sun_protection_breathable_fabric",
+      "query": "男士防晒衣想要透气凉快的面料",
+      "relevant_source_ids": ["car-e7d4de1bb218d477"],
+      "tags": ["hard-negative", "sun-protection", "fabric"]
+    },
+    {
+      "case_id": "glasses_blue_light_discount",
+      "query": "想配防蓝光镜片，K品牌有折扣吗",
+      "relevant_source_ids": ["car-6a89199f8942180f"],
+      "tags": ["hard-negative", "glasses", "discount"]
+    },
+    {
+      "case_id": "glasses_myopic_sunglasses",
+      "query": "想配一副近视太阳镜",
+      "relevant_source_ids": ["car-51b5b30f4e7c6d2c"],
+      "tags": ["hard-negative", "glasses", "lens"]
+    }
+  ]
+}

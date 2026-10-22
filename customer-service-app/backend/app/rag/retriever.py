@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from app.rag.bm25 import DEFAULT_KNOWLEDGE_PATH, BM25Retriever, BM25SearchResult
+from app.rag.reranker import PairReranker
 
 DEFAULT_MILVUS_PATH = (
     Path(__file__).resolve().parents[4]
@@ -83,18 +84,24 @@ class KnowledgeRetriever:
         collection_name: str = DEFAULT_COLLECTION_NAME,
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
         lexical_retriever: BM25Retriever | None = None,
+        reranker: PairReranker | None = None,
+        rerank_candidates: int = 8,
         rrf_k: int = 60,
     ) -> None:
         if not 0 <= min_score <= 1:
             raise ValueError("min_score must be between zero and one")
         if rrf_k <= 0:
             raise ValueError("rrf_k must be greater than zero")
+        if rerank_candidates <= 0:
+            raise ValueError("rerank_candidates must be greater than zero")
 
         self._client = client
         self._embedder = embedder
         self._collection_name = collection_name
         self._min_score = min_score
         self._lexical_retriever = lexical_retriever
+        self._reranker = reranker
+        self._rerank_candidates = rerank_candidates
         self._rrf_k = rrf_k
 
     @classmethod
@@ -105,6 +112,8 @@ class KnowledgeRetriever:
         collection_name: str = DEFAULT_COLLECTION_NAME,
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
         knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH,
+        reranker: PairReranker | None = None,
+        rerank_candidates: int = 8,
     ) -> "KnowledgeRetriever":
         from pymilvus import MilvusClient
 
@@ -117,6 +126,8 @@ class KnowledgeRetriever:
             collection_name=collection_name,
             min_score=min_score,
             lexical_retriever=BM25Retriever.from_json(knowledge_path),
+            reranker=reranker,
+            rerank_candidates=rerank_candidates,
         )
 
     def search(self, query: str, *, limit: int = 2) -> list[RetrievedDocument]:
@@ -125,12 +136,37 @@ class KnowledgeRetriever:
         if limit <= 0:
             raise ValueError("limit must be greater than zero")
 
+        if self._lexical_retriever is None and self._reranker is None:
+            return self._search_vectors(query, limit=limit)
+
+        if self._reranker is None:
+            candidate_limit = max(8, limit * 4)
+        else:
+            candidate_limit = max(self._rerank_candidates, limit)
+
+        candidates = self.retrieve_candidates(query, limit=candidate_limit)
+        if self._reranker is None:
+            return candidates[:limit]
+        return self._rerank(query, candidates, limit=limit)
+
+    def retrieve_candidates(
+        self,
+        query: str,
+        *,
+        limit: int = 8,
+    ) -> list[RetrievedDocument]:
+        """Return the hybrid retrieval candidates before CrossEncoder reranking."""
+
+        if not query.strip():
+            return []
+        if limit <= 0:
+            raise ValueError("limit must be greater than zero")
+
         if self._lexical_retriever is None:
             return self._search_vectors(query, limit=limit)
 
-        candidate_limit = max(8, limit * 4)
-        vector_results = self._search_vectors(query, limit=candidate_limit)
-        lexical_results = self._lexical_retriever.search(query, limit=candidate_limit)
+        vector_results = self._search_vectors(query, limit=limit)
+        lexical_results = self._lexical_retriever.search(query, limit=limit)
         return self._fuse_results(vector_results, lexical_results, limit=limit)
 
     def close(self) -> None:
@@ -178,6 +214,27 @@ class KnowledgeRetriever:
                 break
 
         return results
+
+    def _rerank(
+        self,
+        query: str,
+        candidates: Sequence[RetrievedDocument],
+        *,
+        limit: int,
+    ) -> list[RetrievedDocument]:
+        if self._reranker is None:
+            return list(candidates[:limit])
+
+        passages = [f"{document.title}\n{document.content}" for document in candidates]
+        scores = self._reranker.score(query, passages)
+        if len(scores) != len(candidates):
+            raise ValueError("reranker must return one score per candidate")
+
+        ranked = sorted(
+            enumerate(zip(candidates, scores, strict=True)),
+            key=lambda item: (-item[1][1], item[0]),
+        )
+        return [_with_score(document, score) for _, (document, score) in ranked[:limit]]
 
     def _fuse_results(
         self,

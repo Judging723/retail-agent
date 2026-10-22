@@ -206,6 +206,14 @@ python scripts/search_milvus.py "我想买一件防晒衣，帮我推荐一下"
 避免把“Python 装饰器”错误匹配成“黑板装饰墙贴”。固定评测结果为 Hit@3 `1.000`、MRR
 `1.000`、负例准确率 `1.000`；这些数字只描述当前 12 条教育性测试集。
 
+混合检索之后只把前 8 个候选交给 `BAAI/bge-reranker-v2-m3` CrossEncoder 重排。模型与本地
+Travel Agent 项目保持一致，并固定到 commit `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`，
+避免上游更新改变实验结果。Reranker 会同时阅读问题和完整候选文本，适合区分“同样是手机，
+但用户要 512G 赠品还是游戏续航”这类难负例。在 11 条独立难负例上，重排前后的 Hit@3
+都是 `1.000`，MRR 从 `0.864` 提升到 `1.000`；代价是比向量检索慢，因此不会对 1073 条
+文档逐条打分。可用
+`RETAIL_RAG_RERANKER_ENABLED=false` 关闭，并用 `RETAIL_RAG_RERANKER_CANDIDATES` 调整候选数。
+
 ## 启动前端
 
 先在 `customer-service-app/backend/` 启动后端，再打开另一个终端：
@@ -224,7 +232,7 @@ npm run dev
 
 1. DeepSeek 多轮聊天、流式响应与 Vue 页面（已完成）
 2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
-3. 公开数据转换、Milvus 入库、相关性闸门和混合检索（已完成）
+3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流和退款 Agent 工具
 5. 离线评测与训练数据治理
 6. 独立的微调、量化与模型部署

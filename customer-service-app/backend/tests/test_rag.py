@@ -29,6 +29,16 @@ class FakeMilvusClient:
         ]
 
 
+class FakeReranker:
+    def __init__(self, scores: list[float]) -> None:
+        self.scores = scores
+        self.calls: list[tuple[str, list[str]]] = []
+
+    def score(self, query: str, documents: Sequence[str]) -> list[float]:
+        self.calls.append((query, list(documents)))
+        return self.scores
+
+
 def test_milvus_retriever_embeds_query_and_deduplicates_sources() -> None:
     client = FakeMilvusClient()
     embedder = FakeEmbedder()
@@ -89,6 +99,56 @@ def test_hybrid_retrieval_promotes_exact_bm25_match() -> None:
     results = retriever.search("我想买手机", limit=2)
 
     assert [result.source_id for result in results] == ["car-phone", "car-apple"]
+
+
+def test_reranker_reorders_hybrid_candidates() -> None:
+    lexical_retriever = BM25Retriever(
+        [
+            _bm25_document("car-apple", "苹果"),
+            _bm25_document("car-phone", "手机"),
+        ]
+    )
+    reranker = FakeReranker([0.1, 0.9])
+    retriever = KnowledgeRetriever(
+        FakeMilvusClient(),
+        FakeEmbedder(),
+        lexical_retriever=lexical_retriever,
+        reranker=reranker,
+        rerank_candidates=2,
+    )
+
+    results = retriever.search("我想买苹果", limit=2)
+
+    assert [result.source_id for result in results] == ["car-phone", "car-apple"]
+    assert [result.score for result in results] == [0.9, 0.1]
+    assert reranker.calls[0][0] == "我想买苹果"
+    assert reranker.calls[0][1][0].startswith("购物澄清案例：苹果\n")
+
+
+def test_reranker_must_return_one_score_per_candidate() -> None:
+    retriever = KnowledgeRetriever(
+        FakeMilvusClient(),
+        FakeEmbedder(),
+        reranker=FakeReranker([0.9]),
+        rerank_candidates=2,
+    )
+
+    with pytest.raises(ValueError, match="one score per candidate"):
+        retriever.search("我想买苹果", limit=2)
+
+
+def test_retrieve_candidates_skips_reranker() -> None:
+    reranker = FakeReranker([0.9, 0.1])
+    retriever = KnowledgeRetriever(
+        FakeMilvusClient(),
+        FakeEmbedder(),
+        reranker=reranker,
+    )
+
+    candidates = retriever.retrieve_candidates("我想买苹果", limit=2)
+
+    assert [candidate.source_id for candidate in candidates] == ["car-apple", "car-phone"]
+    assert reranker.calls == []
 
 
 def _hit(source_id: str, merchandise: str, text: str, score: float) -> dict:

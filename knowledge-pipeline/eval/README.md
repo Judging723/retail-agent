@@ -21,6 +21,9 @@ contaminated.
 - Relevance threshold: 0.52, selected on the separate `relevance_development.json` set
 - Lexical channel: BM25 over product names and keywords, gated by complete product phrases
 - Fusion: Reciprocal Rank Fusion with `k=60`
+- Reranker: `BAAI/bge-reranker-v2-m3`
+- Reranker revision: `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`
+- Reranker candidates: 8
 
 ## Results
 
@@ -44,6 +47,21 @@ evaluation keeps this failure as a regression case.
 The keyword baseline is intentionally easy because each positive query names a unique product.
 These results describe only this small educational benchmark and are not production-quality claims.
 
+`reranker_cases.json` is a separate hard-negative set. Each query competes with several dialogues
+about the same product, so matching the product name is insufficient; the ranking must also match
+constraints such as storage, fabric, skin tone, size, or lens type. It is used to compare the hybrid
+candidate order with the CrossEncoder order and is never used to train the model.
+
+| Hard-negative ranking | Hit@3 | MRR |
+| --- | ---: | ---: |
+| BM25 + Milvus + RRF candidates | 1.000 | 0.864 |
+| Candidates + BGE reranker | 1.000 | 1.000 |
+
+Before reranking, the relevant Android-camera phone, natural-skin-tone lipstick, and breathable
+men's sun-protection dialogue each ranked second behind another document about the same product.
+The pinned BGE reranker moved all three to rank one without losing any top-three hit. These metrics
+describe 11 manually reviewed hard-positive cases, not a general production-quality guarantee.
+
 ## Reproduce
 
 From the `knowledge-pipeline` directory:
@@ -52,7 +70,8 @@ From the `knowledge-pipeline` directory:
 python scripts/evaluate_semantic.py
 python scripts/calibrate_milvus_threshold.py
 python scripts/evaluate_online_hybrid.py
+python scripts/evaluate_online_reranker.py
 ```
 
-The first run downloads the pinned public model into the local Hugging Face cache. Model weights are
-not stored in this repository.
+The first run downloads the pinned public embedding and reranker models into the local Hugging Face
+cache. Model weights are not stored in this repository.

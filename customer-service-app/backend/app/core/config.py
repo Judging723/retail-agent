@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     milvus_uri: str = str(DEFAULT_MILVUS_PATH)
     milvus_collection: str = "retail_knowledge"
     rag_min_score: float = Field(default=0.52, ge=0, le=1)
+    rag_reranker_enabled: bool = True
+    rag_reranker_candidates: int = Field(default=8, ge=1, le=50)
 
 
 @lru_cache
