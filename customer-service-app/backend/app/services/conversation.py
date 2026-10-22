@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.agents import CustomerSupportAgent, OrderToolExecutor
 from app.llm import ChatMessage, LLMClient
 from app.models import (
     Conversation,
@@ -19,6 +20,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "你是一名专业、谨慎的电商客服助手。"
     "请根据会话内容回答；信息不足时先追问，"
     "不得编造订单、物流、退款或赔付状态。"
+    "涉及具体订单状态时，必须使用工具查询；订单号不足时先向用户追问。"
     "检索到的公开数据是购物澄清案例，不是平台业务规则；"
     "只能借鉴其中的澄清思路，不能把案例内容说成当前用户或平台的事实。"
 )
@@ -35,6 +37,7 @@ class ConversationClosedError(Exception):
 @dataclass(frozen=True, slots=True)
 class PreparedChat:
     conversation_id: int
+    customer_id: int
     next_sequence: int
     prompt: list[ChatMessage]
     sources: list[RetrievedDocument]
@@ -88,7 +91,30 @@ class ConversationService:
             knowledge_retriever=knowledge_retriever,
         )
 
-        assistant_content = await llm_client.chat(prepared_chat.prompt)
+        assistant_message = await self.complete_prepared_chat(
+            prepared_chat=prepared_chat,
+            user_content=user_content,
+            llm_client=llm_client,
+        )
+
+        return assistant_message, prepared_chat.sources
+
+    async def complete_prepared_chat(
+        self,
+        *,
+        prepared_chat: PreparedChat,
+        user_content: str,
+        llm_client: LLMClient,
+    ) -> Message:
+        agent = CustomerSupportAgent(
+            llm_client=llm_client,
+            order_tool_executor=OrderToolExecutor(self._session),
+        )
+        assistant_content = await agent.respond(
+            prepared_chat.prompt,
+            conversation_id=prepared_chat.conversation_id,
+            customer_id=prepared_chat.customer_id,
+        )
         assistant_message = await self.save_chat_exchange(
             conversation_id=prepared_chat.conversation_id,
             next_sequence=prepared_chat.next_sequence,
@@ -96,7 +122,7 @@ class ConversationService:
             assistant_content=assistant_content,
         )
 
-        return assistant_message, prepared_chat.sources
+        return assistant_message
 
     async def prepare_chat(
         self,
@@ -135,6 +161,7 @@ class ConversationService:
 
         return PreparedChat(
             conversation_id=conversation.id,
+            customer_id=conversation.customer_id,
             next_sequence=next_sequence,
             prompt=prompt,
             sources=retrieved_documents,

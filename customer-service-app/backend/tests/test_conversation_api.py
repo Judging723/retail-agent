@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from httpx2 import AsyncClient
 
 from app.api.dependencies import get_llm_client
-from app.llm import ChatMessage, LLMUnavailableError
+from app.llm import AssistantTurn, ChatMessage, LLMUnavailableError, ToolDefinition
 
 pytestmark = [
     pytest.mark.anyio,
@@ -24,6 +24,14 @@ class FakeLLMClient:
         self.calls.append(list(messages))
         return self.response
 
+    async def complete_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AssistantTurn:
+        self.calls.append(list(messages))
+        return AssistantTurn(content=self.response, tool_calls=())
+
     async def stream(
         self,
         messages: Sequence[ChatMessage],
@@ -37,6 +45,13 @@ class FakeLLMClient:
 
 class FailingLLMClient:
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        raise LLMUnavailableError("模拟模型不可用")
+
+    async def complete_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AssistantTurn:
         raise LLMUnavailableError("模拟模型不可用")
 
     async def stream(
@@ -183,7 +198,6 @@ async def test_stream_chat_flow(
     events = parse_sse_events(stream_response.text)
     assert [event for event, _ in events] == [
         "sources",
-        "delta",
         "delta",
         "done",
     ]

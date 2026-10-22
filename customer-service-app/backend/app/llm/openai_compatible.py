@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator, Sequence
-from typing import Protocol
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 from openai import (
     APIConnectionError,
@@ -8,7 +9,21 @@ from openai import (
     RateLimitError,
 )
 
-ChatMessage = dict[str, str]
+ChatMessage = dict[str, Any]
+ToolDefinition = dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class FunctionToolCall:
+    id: str
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True, slots=True)
+class AssistantTurn:
+    content: str | None
+    tool_calls: tuple[FunctionToolCall, ...]
 
 
 class LLMUnavailableError(RuntimeError):
@@ -17,6 +32,12 @@ class LLMUnavailableError(RuntimeError):
 
 class LLMClient(Protocol):
     async def chat(self, messages: Sequence[ChatMessage]) -> str: ...
+
+    async def complete_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AssistantTurn: ...
 
     def stream(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]: ...
 
@@ -57,6 +78,48 @@ class OpenAICompatibleLLMClient:
             raise LLMUnavailableError("Model service returned an empty response")
 
         return content.strip()
+
+    async def complete_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AssistantTurn:
+        try:
+            completion = await self._client.chat.completions.create(
+                model=self._model,
+                messages=list(messages),
+                tools=list(tools),
+                tool_choice="auto",
+                extra_body={"thinking": {"type": "disabled"}},
+            )
+        except (
+            APIConnectionError,
+            RateLimitError,
+            InternalServerError,
+        ) as exc:
+            raise LLMUnavailableError("Model service is unavailable") from exc
+
+        if not completion.choices:
+            raise LLMUnavailableError("Model service returned an empty response")
+
+        message = completion.choices[0].message
+        content = message.content.strip() if isinstance(message.content, str) else None
+        tool_calls = tuple(
+            FunctionToolCall(
+                id=tool_call.id,
+                name=tool_call.function.name,
+                arguments=tool_call.function.arguments,
+            )
+            for tool_call in (message.tool_calls or [])
+        )
+
+        if not content and not tool_calls:
+            raise LLMUnavailableError("Model service returned an empty response")
+
+        return AssistantTurn(
+            content=content or None,
+            tool_calls=tool_calls,
+        )
 
     async def stream(
         self,

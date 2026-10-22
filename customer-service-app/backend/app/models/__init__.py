@@ -10,6 +10,7 @@ from app.models.order import (
     Shipment,
     ShipmentStatus,
 )
+from app.models.tool_audit import ToolAuditLog, ToolAuditStatus
 
 __all__ = [
     "Base",
@@ -24,4 +25,6 @@ __all__ = [
     "RefundStatus",
     "Shipment",
     "ShipmentStatus",
+    "ToolAuditLog",
+    "ToolAuditStatus",
 ]

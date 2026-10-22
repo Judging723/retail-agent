@@ -167,19 +167,13 @@ async def stream_chat(
             {"sources": [source.model_dump(mode="json") for source in source_responses]},
         )
 
-        chunks: list[str] = []
         try:
-            async for chunk in llm_client.stream(prepared_chat.prompt):
-                chunks.append(chunk)
-                yield _encode_sse_event("delta", {"content": chunk})
-
-            assistant_content = "".join(chunks).strip()
-            message = await service.save_chat_exchange(
-                conversation_id=prepared_chat.conversation_id,
-                next_sequence=prepared_chat.next_sequence,
+            message = await service.complete_prepared_chat(
+                prepared_chat=prepared_chat,
                 user_content=payload.content,
-                assistant_content=assistant_content,
+                llm_client=llm_client,
             )
+            yield _encode_sse_event("delta", {"content": message.content})
         except LLMUnavailableError as exc:
             yield _encode_sse_event("error", {"detail": str(exc)})
             return
