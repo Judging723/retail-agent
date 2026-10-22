@@ -63,9 +63,21 @@ async def test_multi_turn_chat_flow(
     assert first_response.status_code == 201
     assert first_response.json()["sequence_no"] == 2
     assert first_response.json()["role"] == "assistant"
+    assert first_response.json()["sources"] == [
+        {
+            "source_id": "shipping-query",
+            "title": "物流查询说明",
+        }
+    ]
 
     assert second_response.status_code == 201
     assert second_response.json()["sequence_no"] == 4
+    assert second_response.json()["sources"] == [
+        {
+            "source_id": "shipping-query",
+            "title": "物流查询说明",
+        }
+    ]
 
     assert history_response.status_code == 200
     messages = history_response.json()["messages"]
@@ -84,10 +96,19 @@ async def test_multi_turn_chat_flow(
 
     assert [message["role"] for message in fake_llm.calls[1]] == [
         "system",
+        "system",
         "user",
         "assistant",
         "user",
     ]
+
+    first_prompt = fake_llm.calls[0]
+    assert [message["role"] for message in first_prompt] == [
+        "system",
+        "system",
+        "user",
+    ]
+    assert "物流查询说明" in first_prompt[1]["content"]
 
 
 async def test_same_customer_can_create_multiple_conversations(

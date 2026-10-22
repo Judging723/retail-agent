@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.llm import LLMClient, OpenAICompatibleLLMClient
+from app.rag import KnowledgeRetriever
 from app.services.conversation import ConversationService
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -21,6 +22,16 @@ def get_conversation_service(
 
 
 ConversationServiceDependency = Annotated[ConversationService, Depends(get_conversation_service)]
+
+
+def get_knowledge_retriever() -> KnowledgeRetriever:
+    return KnowledgeRetriever()
+
+
+KnowledgeRetrieverDependency = Annotated[
+    KnowledgeRetriever,
+    Depends(get_knowledge_retriever),
+]
 
 
 async def get_llm_client() -> AsyncIterator[LLMClient]:

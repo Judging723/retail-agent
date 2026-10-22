@@ -12,6 +12,7 @@ from app.models import (
     Message,
     MessageRole,
 )
+from app.rag import KnowledgeRetriever, RetrievedDocument
 
 DEFAULT_SYSTEM_PROMPT = (
     "你是一名专业、谨慎的电商客服助手。"
@@ -68,7 +69,8 @@ class ConversationService:
         conversation_no: str,
         user_content: str,
         llm_client: LLMClient,
-    ) -> Message:
+        knowledge_retriever: KnowledgeRetriever,
+    ) -> tuple[Message, list[RetrievedDocument]]:
         async with self._session.begin():
             conversation = await self._find_conversation(conversation_no)
             self._ensure_available(conversation, conversation_no)
@@ -76,8 +78,20 @@ class ConversationService:
             next_sequence = (
                 conversation.messages[-1].sequence_no + 1 if conversation.messages else 1
             )
+            retrieved_documents = knowledge_retriever.search(user_content)
+            system_messages: list[ChatMessage] = [
+                {"role": "system", "content": DEFAULT_SYSTEM_PROMPT}
+            ]
+            if retrieved_documents:
+                system_messages.append(
+                    {
+                        "role": "system",
+                        "content": self._build_knowledge_context(retrieved_documents),
+                    }
+                )
+
             prompt: list[ChatMessage] = [
-                {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+                *system_messages,
                 *[
                     {"role": message.role.value, "content": message.content}
                     for message in conversation.messages
@@ -103,7 +117,7 @@ class ConversationService:
             await self._session.flush()
             await self._session.refresh(assistant_message)
 
-        return assistant_message
+        return assistant_message, retrieved_documents
 
     async def get_conversation(
         self,
@@ -144,3 +158,14 @@ class ConversationService:
     def _generate_conversation_no() -> str:
         suffix = uuid4().hex[:20].upper()
         return f"CONV-{suffix}"
+
+    @staticmethod
+    def _build_knowledge_context(documents: list[RetrievedDocument]) -> str:
+        sections = [
+            f"[知识{i}] {document.title}\n{document.content}"
+            for i, document in enumerate(documents, start=1)
+        ]
+        return (
+            "以下是与用户问题相关的知识库内容。优先依据这些内容回答；"
+            "资料不足时请明确说明，不要编造。\n\n" + "\n\n".join(sections)
+        )

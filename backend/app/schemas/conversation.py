@@ -33,8 +33,14 @@ class MessageResponse(BaseModel):
     created_at: datetime
 
 
+class KnowledgeSourceResponse(BaseModel):
+    source_id: str
+    title: str
+
+
 class ChatResponse(MessageResponse):
     conversation_no: str
+    sources: list[KnowledgeSourceResponse]
 
 
 class ConversationDetailResponse(BaseModel):

@@ -8,9 +8,10 @@
 - 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话与消息
 - 调用 DeepSeek 等 OpenAI 兼容模型生成客服回复
 - 保存并传递多轮对话历史
+- 使用关键词检索演示 RAG，并在回复中返回知识来源
 - 使用少量自动化测试验证核心流程
 
-尚未实现 Vue 前端、RAG、订单工具、模型微调和量化。
+尚未实现 Vue 前端、向量检索、订单工具、模型微调和量化。
 
 ## 核心流程
 
@@ -21,6 +22,7 @@ FastAPI Router
   ↓
 ConversationService
   ├── SQLAlchemy → MySQL
+  ├── Keyword Knowledge Retriever → 演示知识库
   └── OpenAICompatibleLLMClient → DeepSeek API
 ```
 
@@ -110,8 +112,8 @@ infra/                 # 本地 MySQL Docker Compose
 每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
 
 1. DeepSeek 多轮聊天与历史记录（当前阶段）
-2. Vue 3 最小聊天页面
-3. 基础知识库 RAG，并展示引用来源
+2. 基础知识库 RAG，并展示引用来源（当前阶段）
+3. Vue 3 最小聊天页面
 4. 一个合成订单查询工具
 5. 小型离线评测集
 6. 独立的微调与量化实验

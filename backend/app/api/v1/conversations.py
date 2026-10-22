@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import (
     ConversationServiceDependency,
+    KnowledgeRetrieverDependency,
     LLMClientDependency,
 )
 from app.llm import LLMUnavailableError
@@ -11,6 +12,7 @@ from app.schemas.conversation import (
     ConversationCreateRequest,
     ConversationCreateResponse,
     ConversationDetailResponse,
+    KnowledgeSourceResponse,
     MessageResponse,
 )
 from app.services import ConversationClosedError, ConversationNotFoundError
@@ -88,12 +90,14 @@ async def chat(
     payload: ChatRequest,
     service: ConversationServiceDependency,
     llm_client: LLMClientDependency,
+    knowledge_retriever: KnowledgeRetrieverDependency,
 ) -> ChatResponse:
     try:
-        message = await service.chat(
+        message, sources = await service.chat(
             conversation_no=conversation_no,
             user_content=payload.content,
             llm_client=llm_client,
+            knowledge_retriever=knowledge_retriever,
         )
     except ConversationNotFoundError as exc:
         raise HTTPException(
@@ -118,4 +122,11 @@ async def chat(
         role=message.role,
         content=message.content,
         created_at=message.created_at,
+        sources=[
+            KnowledgeSourceResponse(
+                source_id=source.source_id,
+                title=source.title,
+            )
+            for source in sources
+        ],
     )
