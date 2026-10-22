@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_MILVUS_PATH = (
@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     milvus_uri: str = str(DEFAULT_MILVUS_PATH)
     milvus_collection: str = "retail_knowledge"
+    rag_min_score: float = Field(default=0.52, ge=0, le=1)
 
 
 @lru_cache

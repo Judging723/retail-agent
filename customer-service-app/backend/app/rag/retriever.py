@@ -13,6 +13,7 @@ DEFAULT_MILVUS_PATH = (
 DEFAULT_COLLECTION_NAME = "retail_knowledge"
 DEFAULT_MODEL_NAME = "BAAI/bge-small-zh-v1.5"
 DEFAULT_MODEL_REVISION = "7999e1d3359715c523056ef9478215996d62a620"
+DEFAULT_RELEVANCE_THRESHOLD = 0.52
 QUERY_INSTRUCTION = "为这个句子生成表示以用于检索相关文章："
 
 OUTPUT_FIELDS = [
@@ -77,10 +78,15 @@ class KnowledgeRetriever:
         embedder: QueryEmbedder,
         *,
         collection_name: str = DEFAULT_COLLECTION_NAME,
+        min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
     ) -> None:
+        if not 0 <= min_score <= 1:
+            raise ValueError("min_score must be between zero and one")
+
         self._client = client
         self._embedder = embedder
         self._collection_name = collection_name
+        self._min_score = min_score
 
     @classmethod
     def from_milvus(
@@ -88,6 +94,7 @@ class KnowledgeRetriever:
         uri: str = str(DEFAULT_MILVUS_PATH),
         *,
         collection_name: str = DEFAULT_COLLECTION_NAME,
+        min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
     ) -> "KnowledgeRetriever":
         from pymilvus import MilvusClient
 
@@ -98,6 +105,7 @@ class KnowledgeRetriever:
             client,
             embedder,
             collection_name=collection_name,
+            min_score=min_score,
         )
 
     def search(self, query: str, *, limit: int = 2) -> list[RetrievedDocument]:
@@ -118,6 +126,10 @@ class KnowledgeRetriever:
         results: list[RetrievedDocument] = []
         seen_source_ids: set[str] = set()
         for hit in response[0]:
+            score = float(hit["distance"])
+            if score < self._min_score:
+                continue
+
             entity = hit["entity"]
             source_id = entity["source_id"]
             if source_id in seen_source_ids:
@@ -134,7 +146,7 @@ class KnowledgeRetriever:
                     source_date=entity["source_date"],
                     source_url=entity["source_url"],
                     license=entity["license"],
-                    score=float(hit["distance"]),
+                    score=score,
                 )
             )
             if len(results) == limit:

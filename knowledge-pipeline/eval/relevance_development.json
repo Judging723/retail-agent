@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "description": "用于校准向量检索拒答阈值的开发集，不参与最终检索指标报告。",
+  "cases": [
+    {
+      "case_id": "chicken-feet-dev-001",
+      "query": "鸡爪怎么卖，买之前还需要确认口味和分量",
+      "relevant_source_ids": ["car-ff17f260f7848ec6"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "air-conditioner-dev-001",
+      "query": "我想买空调，需要先说明房间面积和预算",
+      "relevant_source_ids": ["car-2ddeb8df47cd692d"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "scarf-dev-001",
+      "query": "买围巾时要确认材质、颜色和送给谁",
+      "relevant_source_ids": ["car-8dcad55788ad5e5d"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "robot-vacuum-dev-001",
+      "query": "扫地机器人怎么选，需要问户型和家里有没有宠物",
+      "relevant_source_ids": ["car-71e3414f561817fd"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "mango-dev-001",
+      "query": "买芒果之前需要确认品种、成熟度和数量",
+      "relevant_source_ids": ["car-a4d519ff9f7c5e3a"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "suitcase-dev-001",
+      "query": "皮箱买多大尺寸才适合登机",
+      "relevant_source_ids": ["car-5edf951006a52370"],
+      "tags": ["购物相关", "正例"]
+    },
+    {
+      "case_id": "quantum-dev-001",
+      "query": "请解释一下量子纠缠",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    },
+    {
+      "case_id": "python-dev-001",
+      "query": "帮我用 Python 写快速排序",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    },
+    {
+      "case_id": "poetry-dev-001",
+      "query": "李白的静夜思表达了什么感情",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    },
+    {
+      "case_id": "math-dev-001",
+      "query": "圆周率小数点后第一百位是多少",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    },
+    {
+      "case_id": "sports-dev-001",
+      "query": "世界杯决赛的比分是多少",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    },
+    {
+      "case_id": "astronomy-dev-001",
+      "query": "太阳系里最大的行星是哪一个",
+      "relevant_source_ids": [],
+      "tags": ["非购物", "负例"]
+    }
+  ]
+}

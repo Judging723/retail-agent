@@ -1,5 +1,7 @@
 from collections.abc import Sequence
 
+import pytest
+
 from app.rag import KnowledgeRetriever
 
 
@@ -52,6 +54,23 @@ def test_empty_query_does_not_search_milvus() -> None:
     assert retriever.search("   ") == []
     assert embedder.queries == []
     assert client.search_calls == []
+
+
+def test_results_below_relevance_threshold_are_removed() -> None:
+    retriever = KnowledgeRetriever(
+        FakeMilvusClient(),
+        FakeEmbedder(),
+        min_score=0.9,
+    )
+
+    results = retriever.search("我想买苹果")
+
+    assert [result.source_id for result in results] == ["car-apple"]
+
+
+def test_invalid_relevance_threshold_is_rejected() -> None:
+    with pytest.raises(ValueError, match="between zero and one"):
+        KnowledgeRetriever(FakeMilvusClient(), FakeEmbedder(), min_score=1.1)
 
 
 def _hit(source_id: str, merchandise: str, text: str, score: float) -> dict:

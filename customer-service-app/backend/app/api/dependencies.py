@@ -31,6 +31,7 @@ def get_knowledge_retriever() -> KnowledgeRetriever:
     return KnowledgeRetriever.from_milvus(
         settings.milvus_uri,
         collection_name=settings.milvus_collection,
+        min_score=settings.rag_min_score,
     )
 
 

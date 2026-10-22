@@ -8,6 +8,7 @@ def test_default_settings() -> None:
     assert settings.llm_api_base == "https://api.deepseek.com"
     assert settings.llm_model == "deepseek-flash"
     assert settings.llm_api_key.get_secret_value() == ""
+    assert settings.rag_min_score == 0.52
 
 
 def test_llm_settings_can_be_overridden(monkeypatch) -> None:

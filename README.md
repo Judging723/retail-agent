@@ -197,6 +197,10 @@ python scripts/search_milvus.py "我想买一件防晒衣，帮我推荐一下"
 离线流水线设置 `MILVUS_URI=http://127.0.0.1:19530`，后端设置对应的
 `RETAIL_MILVUS_URI`。
 
+在线检索默认只保留余弦相似度不低于 `0.52` 的结果。该值由独立开发集校准，而不是用固定
+测试集反向调参；可通过 `RETAIL_RAG_MIN_SCORE` 覆盖。它是当前数据与模型组合的实验基线，
+更换 Embedding 模型或知识库后必须重新校准。
+
 ## 启动前端
 
 先在 `customer-service-app/backend/` 启动后端，再打开另一个终端：

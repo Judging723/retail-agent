@@ -18,18 +18,20 @@ contaminated.
 - Embedding dimension: 512
 - Indexed text: document title and content
 - Similarity: dot product over normalized embeddings, equivalent to cosine similarity
+- Relevance threshold: 0.52, selected on the separate `relevance_development.json` set
 
 ## Results
 
 | Retriever | Hit@3 | MRR | Negative accuracy |
 | --- | ---: | ---: | ---: |
 | Exact keyword baseline | 1.000 | 1.000 | 1.000 |
-| BGE semantic baseline | 1.000 | 0.950 | 0.000 |
+| BGE semantic baseline + threshold | 1.000 | 0.950 | 1.000 |
 
 The semantic model retrieved the relevant document for every positive query in the top three.
-Nine relevant documents ranked first and one ranked second. However, dense retrieval returned
-documents for both unrelated queries, so a later stage must calibrate a rejection threshold on a
-separate development set instead of tuning against this fixed evaluation set.
+Nine relevant documents ranked first and one ranked second. Raw dense retrieval always returns a
+nearest neighbor, including for unrelated questions. A separate development set selected 0.5172 as
+the midpoint between its highest negative and lowest positive score; the application uses the
+rounded threshold 0.52. The fixed test set was not used to choose that value.
 
 The keyword baseline is intentionally easy because each positive query names a unique product.
 These results describe only this small educational benchmark and are not production-quality claims.
@@ -40,6 +42,7 @@ From the `knowledge-pipeline` directory:
 
 ```bash
 python scripts/evaluate_semantic.py
+python scripts/calibrate_milvus_threshold.py
 ```
 
 The first run downloads the pinned public model into the local Hugging Face cache. Model weights are
