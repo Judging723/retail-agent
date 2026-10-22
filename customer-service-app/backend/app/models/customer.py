@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
+    from app.models.order import Order
 
 
 class Customer(TimestampMixin, Base):
@@ -30,6 +31,10 @@ class Customer(TimestampMixin, Base):
     )
 
     conversations: Mapped[list[Conversation]] = relationship(
+        back_populates="customer",
+        passive_deletes="all",
+    )
+    orders: Mapped[list[Order]] = relationship(
         back_populates="customer",
         passive_deletes="all",
     )
