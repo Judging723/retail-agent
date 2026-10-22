@@ -238,6 +238,7 @@ async def test_order_tool_rejects_invalid_model_arguments(
         ),
         conversation_id=conversation.id,
         customer_id=customer.id,
+        idempotency_key=f"conversation:{conversation.id}:sequence:1",
     )
 
     assert json.loads(result) == {

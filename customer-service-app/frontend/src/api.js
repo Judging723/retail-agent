@@ -29,14 +29,21 @@ export function createConversation(customerNo, displayName) {
   })
 }
 
-export function sendChatMessage(conversationNo, content) {
+export function sendChatMessage(conversationNo, content, idempotencyKey) {
+  const requestKey = idempotencyKey || globalThis.crypto.randomUUID()
   return request(`/api/v1/conversations/${conversationNo}/chat`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': requestKey },
     body: JSON.stringify({ content }),
   })
 }
 
-export async function* streamChatMessage(conversationNo, content) {
+export async function* streamChatMessage(
+  conversationNo,
+  content,
+  idempotencyKey,
+) {
+  const requestKey = idempotencyKey || globalThis.crypto.randomUUID()
   const response = await fetch(
     `/api/v1/conversations/${conversationNo}/chat/stream`,
     {
@@ -44,6 +51,7 @@ export async function* streamChatMessage(conversationNo, content) {
       headers: {
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
+        'Idempotency-Key': requestKey,
       },
       body: JSON.stringify({ content }),
     },

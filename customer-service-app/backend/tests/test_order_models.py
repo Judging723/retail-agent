@@ -51,6 +51,7 @@ def test_refund_columns_and_order_foreign_key() -> None:
     assert set(Refund.__table__.c.keys()) == {
         "id",
         "refund_no",
+        "idempotency_key",
         "order_id",
         "amount",
         "reason",

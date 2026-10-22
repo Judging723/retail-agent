@@ -14,6 +14,7 @@ test('streamChatMessage parses SSE events across response chunks', async () => {
   globalThis.fetch = async (url, options) => {
     assert.equal(url, '/api/v1/conversations/CONV-001/chat/stream')
     assert.equal(options.method, 'POST')
+    assert.equal(options.headers['Idempotency-Key'], 'request-001')
     assert.deepEqual(JSON.parse(options.body), { content: '你好' })
 
     const body = new ReadableStream({
@@ -33,7 +34,11 @@ test('streamChatMessage parses SSE events across response chunks', async () => {
 
   try {
     const events = []
-    for await (const event of streamChatMessage('CONV-001', '你好')) {
+    for await (const event of streamChatMessage(
+      'CONV-001',
+      '你好',
+      'request-001',
+    )) {
       events.push(event)
     }
 
@@ -57,7 +62,11 @@ test('streamChatMessage exposes an HTTP error message', async () => {
 
   try {
     await assert.rejects(async () => {
-      for await (const _event of streamChatMessage('missing', '你好')) {
+      for await (const _event of streamChatMessage(
+        'missing',
+        '你好',
+        'request-002',
+      )) {
         // The HTTP error is raised before any event is produced.
       }
     }, /Conversation not found/)

@@ -1,7 +1,8 @@
 import json
 from collections.abc import AsyncIterator
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import (
@@ -96,6 +97,15 @@ async def chat(
     service: ConversationServiceDependency,
     llm_client: LLMClientDependency,
     knowledge_retriever: KnowledgeRetrieverDependency,
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            alias="Idempotency-Key",
+            min_length=8,
+            max_length=128,
+            pattern=r"^[A-Za-z0-9._:-]+$",
+        ),
+    ] = None,
 ) -> ChatResponse:
     try:
         message, sources = await service.chat(
@@ -103,6 +113,7 @@ async def chat(
             user_content=payload.content,
             llm_client=llm_client,
             knowledge_retriever=knowledge_retriever,
+            idempotency_key=idempotency_key,
         )
     except ConversationNotFoundError as exc:
         raise HTTPException(
@@ -141,6 +152,15 @@ async def stream_chat(
     service: ConversationServiceDependency,
     llm_client: LLMClientDependency,
     knowledge_retriever: KnowledgeRetrieverDependency,
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            alias="Idempotency-Key",
+            min_length=8,
+            max_length=128,
+            pattern=r"^[A-Za-z0-9._:-]+$",
+        ),
+    ] = None,
 ) -> StreamingResponse:
     try:
         prepared_chat = await service.prepare_chat(
@@ -172,6 +192,7 @@ async def stream_chat(
                 prepared_chat=prepared_chat,
                 user_content=payload.content,
                 llm_client=llm_client,
+                idempotency_key=idempotency_key,
             )
             yield _encode_sse_event("delta", {"content": message.content})
         except LLMUnavailableError as exc:

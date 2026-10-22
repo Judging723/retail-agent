@@ -156,6 +156,11 @@ class Refund(TimestampMixin, Base):
         nullable=False,
         unique=True,
     )
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+        unique=True,
+    )
     order_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("orders.id", ondelete="CASCADE"),

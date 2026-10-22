@@ -13,6 +13,7 @@ const errorMessage = ref('')
 const isStarting = ref(false)
 const isSending = ref(false)
 const messageList = ref(null)
+const failedRequest = ref(null)
 
 const suggestions = [
   '我想买苹果，哪一种更适合直接吃？',
@@ -75,6 +76,11 @@ async function sendMessage() {
   if (!canSend.value) return
 
   const content = draft.value.trim()
+  const idempotencyKey =
+    failedRequest.value?.content === content
+      ? failedRequest.value.idempotencyKey
+      : crypto.randomUUID()
+  failedRequest.value = null
   draft.value = ''
   errorMessage.value = ''
   isSending.value = true
@@ -104,6 +110,7 @@ async function sendMessage() {
     for await (const streamEvent of streamChatMessage(
       conversation.value.conversation_no,
       content,
+      idempotencyKey,
     )) {
       if (streamEvent.event === 'sources') {
         assistantMessage.sources = streamEvent.data?.sources || []
@@ -134,6 +141,7 @@ async function sendMessage() {
         message.message_id !== assistantMessageId,
     )
     draft.value = content
+    failedRequest.value = { content, idempotencyKey }
     errorMessage.value = readableError(error)
   } finally {
     isSending.value = false
@@ -148,6 +156,7 @@ function resetConversation() {
   sourcesByMessage.value = {}
   draft.value = ''
   errorMessage.value = ''
+  failedRequest.value = null
 }
 </script>
 

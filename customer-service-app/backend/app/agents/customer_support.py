@@ -1,4 +1,4 @@
-from app.agents.order_tools import GET_ORDER_STATUS_TOOL, OrderToolExecutor
+from app.agents.order_tools import CUSTOMER_SERVICE_TOOLS, OrderToolExecutor
 from app.llm import ChatMessage, LLMClient, LLMUnavailableError
 
 MAX_TOOL_ROUNDS = 3
@@ -20,13 +20,14 @@ class CustomerSupportAgent:
         *,
         conversation_id: int,
         customer_id: int,
+        idempotency_key: str,
     ) -> str:
         working_messages = list(messages)
 
         for tool_round in range(MAX_TOOL_ROUNDS + 1):
             turn = await self._llm_client.complete_with_tools(
                 working_messages,
-                [GET_ORDER_STATUS_TOOL],
+                CUSTOMER_SERVICE_TOOLS,
             )
 
             if not turn.tool_calls:
@@ -60,6 +61,7 @@ class CustomerSupportAgent:
                     tool_call,
                     conversation_id=conversation_id,
                     customer_id=customer_id,
+                    idempotency_key=idempotency_key,
                 )
                 working_messages.append(
                     {

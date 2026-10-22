@@ -84,6 +84,7 @@ class ConversationService:
         user_content: str,
         llm_client: LLMClient,
         knowledge_retriever: KnowledgeRetriever,
+        idempotency_key: str | None = None,
     ) -> tuple[Message, list[RetrievedDocument]]:
         prepared_chat = await self.prepare_chat(
             conversation_no=conversation_no,
@@ -95,6 +96,7 @@ class ConversationService:
             prepared_chat=prepared_chat,
             user_content=user_content,
             llm_client=llm_client,
+            idempotency_key=idempotency_key,
         )
 
         return assistant_message, prepared_chat.sources
@@ -105,6 +107,7 @@ class ConversationService:
         prepared_chat: PreparedChat,
         user_content: str,
         llm_client: LLMClient,
+        idempotency_key: str | None = None,
     ) -> Message:
         agent = CustomerSupportAgent(
             llm_client=llm_client,
@@ -114,6 +117,11 @@ class ConversationService:
             prepared_chat.prompt,
             conversation_id=prepared_chat.conversation_id,
             customer_id=prepared_chat.customer_id,
+            idempotency_key=idempotency_key
+            or (
+                f"conversation:{prepared_chat.conversation_id}:"
+                f"sequence:{prepared_chat.next_sequence}"
+            ),
         )
         assistant_message = await self.save_chat_exchange(
             conversation_id=prepared_chat.conversation_id,
