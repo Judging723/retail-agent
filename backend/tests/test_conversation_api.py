@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from httpx2 import AsyncClient
 
 from app.api.dependencies import get_llm_client
-from app.llm import ChatMessage
+from app.llm import ChatMessage, LLMUnavailableError
 
 pytestmark = [
     pytest.mark.anyio,
@@ -22,6 +22,11 @@ class FakeLLMClient:
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
         self.calls.append(list(messages))
         return self.response
+
+
+class FailingLLMClient:
+    async def chat(self, messages: Sequence[ChatMessage]) -> str:
+        raise LLMUnavailableError("模拟模型不可用")
 
 
 async def test_multi_turn_chat_flow(
@@ -106,3 +111,38 @@ async def test_get_missing_conversation_returns_404(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Conversation not found"}
+
+
+async def test_failed_llm_call_does_not_save_messages(
+    application: FastAPI,
+    api_client: AsyncClient,
+) -> None:
+    failing_llm = FailingLLMClient()
+    application.dependency_overrides[get_llm_client] = lambda: failing_llm
+
+    try:
+        suffix = uuid4().hex[:12]
+
+        create_response = await api_client.post(
+            "/api/v1/conversations",
+            json={
+                "customer_no": f"CUST-FAIL-{suffix}",
+                "display_name": "失败事务测试用户",
+            },
+        )
+        conversation_no = create_response.json()["conversation_no"]
+
+        chat_response = await api_client.post(
+            f"/api/v1/conversations/{conversation_no}/chat",
+            json={"content": "帮我查询订单。"},
+        )
+
+        history_response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
+    finally:
+        application.dependency_overrides.pop(get_llm_client, None)
+
+    assert chat_response.status_code == 503
+    assert chat_response.json() == {"detail": "模拟模型不可用"}
+
+    assert history_response.status_code == 200
+    assert history_response.json()["messages"] == []
