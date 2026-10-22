@@ -1,4 +1,5 @@
-from collections.abc import Sequence
+import json
+from collections.abc import AsyncIterator, Sequence
 from uuid import uuid4
 
 import pytest
@@ -23,10 +24,38 @@ class FakeLLMClient:
         self.calls.append(list(messages))
         return self.response
 
+    async def stream(
+        self,
+        messages: Sequence[ChatMessage],
+    ) -> AsyncIterator[str]:
+        self.calls.append(list(messages))
+        midpoint = max(1, len(self.response) // 2)
+        for chunk in [self.response[:midpoint], self.response[midpoint:]]:
+            if chunk:
+                yield chunk
+
 
 class FailingLLMClient:
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
         raise LLMUnavailableError("模拟模型不可用")
+
+    async def stream(
+        self,
+        messages: Sequence[ChatMessage],
+    ) -> AsyncIterator[str]:
+        if not messages:
+            yield ""
+        raise LLMUnavailableError("模拟模型不可用")
+
+
+def parse_sse_events(content: str) -> list[tuple[str, dict]]:
+    events = []
+    for block in content.strip().split("\n\n"):
+        lines = block.splitlines()
+        event = next(line[7:] for line in lines if line.startswith("event: "))
+        data = next(line[6:] for line in lines if line.startswith("data: "))
+        events.append((event, json.loads(data)))
+    return events
 
 
 async def test_multi_turn_chat_flow(
@@ -115,6 +144,87 @@ async def test_multi_turn_chat_flow(
         "user",
     ]
     assert "物流查询说明" in first_prompt[1]["content"]
+
+
+async def test_stream_chat_flow(
+    application: FastAPI,
+    api_client: AsyncClient,
+) -> None:
+    fake_llm = FakeLLMClient("正在为您查询物流。")
+    application.dependency_overrides[get_llm_client] = lambda: fake_llm
+
+    try:
+        suffix = uuid4().hex[:12]
+        create_response = await api_client.post(
+            "/api/v1/conversations",
+            json={
+                "customer_no": f"CUST-STREAM-{suffix}",
+                "display_name": "流式测试用户",
+            },
+        )
+        conversation_no = create_response.json()["conversation_no"]
+
+        stream_response = await api_client.post(
+            f"/api/v1/conversations/{conversation_no}/chat/stream",
+            json={"content": "物流两天没有更新怎么办？"},
+        )
+        history_response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
+    finally:
+        application.dependency_overrides.pop(get_llm_client, None)
+
+    assert stream_response.status_code == 200
+    assert stream_response.headers["content-type"].startswith("text/event-stream")
+
+    events = parse_sse_events(stream_response.text)
+    assert [event for event, _ in events] == [
+        "sources",
+        "delta",
+        "delta",
+        "done",
+    ]
+    assert events[0][1]["sources"][0]["source_id"] == "shipping-query"
+    assert "".join(data["content"] for event, data in events if event == "delta") == (
+        "正在为您查询物流。"
+    )
+    assert events[-1][1]["content"] == "正在为您查询物流。"
+
+    messages = history_response.json()["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
+    assert [message["content"] for message in messages] == [
+        "物流两天没有更新怎么办？",
+        "正在为您查询物流。",
+    ]
+
+
+async def test_failed_stream_saves_no_messages(
+    application: FastAPI,
+    api_client: AsyncClient,
+) -> None:
+    application.dependency_overrides[get_llm_client] = lambda: FailingLLMClient()
+
+    try:
+        suffix = uuid4().hex[:12]
+        create_response = await api_client.post(
+            "/api/v1/conversations",
+            json={
+                "customer_no": f"CUST-STREAM-FAIL-{suffix}",
+                "display_name": "流式失败测试用户",
+            },
+        )
+        conversation_no = create_response.json()["conversation_no"]
+
+        stream_response = await api_client.post(
+            f"/api/v1/conversations/{conversation_no}/chat/stream",
+            json={"content": "帮我查询订单。"},
+        )
+        history_response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
+    finally:
+        application.dependency_overrides.pop(get_llm_client, None)
+
+    events = parse_sse_events(stream_response.text)
+    assert stream_response.status_code == 200
+    assert events[-1] == ("error", {"detail": "模拟模型不可用"})
+    assert history_response.json()["messages"] == []
 
 
 async def test_same_customer_can_create_multiple_conversations(

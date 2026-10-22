@@ -1,4 +1,8 @@
+import json
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import (
     ConversationServiceDependency,
@@ -6,6 +10,7 @@ from app.api.dependencies import (
     LLMClientDependency,
 )
 from app.llm import LLMUnavailableError
+from app.rag import RetrievedDocument
 from app.schemas.conversation import (
     ChatRequest,
     ChatResponse,
@@ -122,14 +127,103 @@ async def chat(
         role=message.role,
         content=message.content,
         created_at=message.created_at,
-        sources=[
-            KnowledgeSourceResponse(
-                source_id=source.source_id,
-                title=source.title,
-                category=source.category,
-                version=source.version,
-                effective_date=source.effective_date,
-            )
-            for source in sources
-        ],
+        sources=_build_source_responses(sources),
     )
+
+
+@router.post(
+    "/{conversation_no}/chat/stream",
+    response_class=StreamingResponse,
+)
+async def stream_chat(
+    conversation_no: str,
+    payload: ChatRequest,
+    service: ConversationServiceDependency,
+    llm_client: LLMClientDependency,
+    knowledge_retriever: KnowledgeRetrieverDependency,
+) -> StreamingResponse:
+    try:
+        prepared_chat = await service.prepare_chat(
+            conversation_no=conversation_no,
+            user_content=payload.content,
+            knowledge_retriever=knowledge_retriever,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        ) from exc
+    except ConversationClosedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conversation is closed",
+        ) from exc
+
+    source_responses = _build_source_responses(prepared_chat.sources)
+
+    async def event_stream() -> AsyncIterator[str]:
+        yield _encode_sse_event(
+            "sources",
+            {"sources": [source.model_dump(mode="json") for source in source_responses]},
+        )
+
+        chunks: list[str] = []
+        try:
+            async for chunk in llm_client.stream(prepared_chat.prompt):
+                chunks.append(chunk)
+                yield _encode_sse_event("delta", {"content": chunk})
+
+            assistant_content = "".join(chunks).strip()
+            message = await service.save_chat_exchange(
+                conversation_id=prepared_chat.conversation_id,
+                next_sequence=prepared_chat.next_sequence,
+                user_content=payload.content,
+                assistant_content=assistant_content,
+            )
+        except LLMUnavailableError as exc:
+            yield _encode_sse_event("error", {"detail": str(exc)})
+            return
+
+        response = ChatResponse(
+            message_id=message.id,
+            conversation_no=conversation_no,
+            sequence_no=message.sequence_no,
+            role=message.role,
+            content=message.content,
+            created_at=message.created_at,
+            sources=source_responses,
+        )
+        yield _encode_sse_event("done", response.model_dump(mode="json"))
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _build_source_responses(
+    sources: list[RetrievedDocument],
+) -> list[KnowledgeSourceResponse]:
+    return [
+        KnowledgeSourceResponse(
+            source_id=source.source_id,
+            title=source.title,
+            category=source.category,
+            version=source.version,
+            effective_date=source.effective_date,
+        )
+        for source in sources
+    ]
+
+
+def _encode_sse_event(event: str, data: object) -> str:
+    serialized = json.dumps(
+        data,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return f"event: {event}\ndata: {serialized}\n\n"

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -27,6 +28,14 @@ class ConversationNotFoundError(Exception):
 
 class ConversationClosedError(Exception):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedChat:
+    conversation_id: int
+    next_sequence: int
+    prompt: list[ChatMessage]
+    sources: list[RetrievedDocument]
 
 
 class ConversationService:
@@ -71,6 +80,29 @@ class ConversationService:
         llm_client: LLMClient,
         knowledge_retriever: KnowledgeRetriever,
     ) -> tuple[Message, list[RetrievedDocument]]:
+        prepared_chat = await self.prepare_chat(
+            conversation_no=conversation_no,
+            user_content=user_content,
+            knowledge_retriever=knowledge_retriever,
+        )
+
+        assistant_content = await llm_client.chat(prepared_chat.prompt)
+        assistant_message = await self.save_chat_exchange(
+            conversation_id=prepared_chat.conversation_id,
+            next_sequence=prepared_chat.next_sequence,
+            user_content=user_content,
+            assistant_content=assistant_content,
+        )
+
+        return assistant_message, prepared_chat.sources
+
+    async def prepare_chat(
+        self,
+        *,
+        conversation_no: str,
+        user_content: str,
+        knowledge_retriever: KnowledgeRetriever,
+    ) -> PreparedChat:
         async with self._session.begin():
             conversation = await self._find_conversation(conversation_no)
             self._ensure_available(conversation, conversation_no)
@@ -99,16 +131,30 @@ class ConversationService:
                 {"role": "user", "content": user_content},
             ]
 
-            assistant_content = await llm_client.chat(prompt)
+        return PreparedChat(
+            conversation_id=conversation.id,
+            next_sequence=next_sequence,
+            prompt=prompt,
+            sources=retrieved_documents,
+        )
 
+    async def save_chat_exchange(
+        self,
+        *,
+        conversation_id: int,
+        next_sequence: int,
+        user_content: str,
+        assistant_content: str,
+    ) -> Message:
+        async with self._session.begin():
             user_message = Message(
-                conversation_id=conversation.id,
+                conversation_id=conversation_id,
                 sequence_no=next_sequence,
                 role=MessageRole.USER,
                 content=user_content,
             )
             assistant_message = Message(
-                conversation_id=conversation.id,
+                conversation_id=conversation_id,
                 sequence_no=next_sequence + 1,
                 role=MessageRole.ASSISTANT,
                 content=assistant_content,
@@ -117,7 +163,7 @@ class ConversationService:
             await self._session.flush()
             await self._session.refresh(assistant_message)
 
-        return assistant_message, retrieved_documents
+        return assistant_message
 
     async def get_conversation(
         self,

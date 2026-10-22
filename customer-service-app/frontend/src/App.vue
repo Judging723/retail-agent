@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 
-import { createConversation, getConversation, sendChatMessage } from './api'
+import { createConversation, getConversation, streamChatMessage } from './api'
 
 const customerNo = ref('DEMO001')
 const displayName = ref('演示用户')
@@ -23,6 +23,11 @@ const suggestions = [
 const canStart = computed(() => customerNo.value.trim() && !isStarting.value)
 const canSend = computed(
   () => conversation.value && draft.value.trim() && !isSending.value,
+)
+const isWaitingForFirstChunk = computed(
+  () =>
+    isSending.value &&
+    !messages.value.some((message) => message.streaming && message.content),
 )
 
 function readableError(error) {
@@ -73,27 +78,61 @@ async function sendMessage() {
   draft.value = ''
   errorMessage.value = ''
   isSending.value = true
+  const temporaryId = Date.now()
+  const userMessageId = `pending-user-${temporaryId}`
+  const assistantMessageId = `pending-assistant-${temporaryId}`
   messages.value.push({
-    message_id: `pending-${Date.now()}`,
+    message_id: userMessageId,
     role: 'user',
     content,
     sources: [],
     pending: true,
   })
+  const assistantMessage = reactive({
+    message_id: assistantMessageId,
+    role: 'assistant',
+    content: '',
+    sources: [],
+    streaming: true,
+  })
+  messages.value.push(assistantMessage)
   await scrollToBottom()
 
   try {
-    const reply = await sendChatMessage(
+    let completed = false
+
+    for await (const streamEvent of streamChatMessage(
       conversation.value.conversation_no,
       content,
-    )
-    sourcesByMessage.value = {
-      ...sourcesByMessage.value,
-      [reply.message_id]: reply.sources,
+    )) {
+      if (streamEvent.event === 'sources') {
+        assistantMessage.sources = streamEvent.data?.sources || []
+      } else if (streamEvent.event === 'delta') {
+        assistantMessage.content += streamEvent.data?.content || ''
+      } else if (streamEvent.event === 'error') {
+        throw new Error(streamEvent.data?.detail || '模型服务暂时不可用')
+      } else if (streamEvent.event === 'done') {
+        completed = true
+        const reply = streamEvent.data
+        sourcesByMessage.value = {
+          ...sourcesByMessage.value,
+          [reply.message_id]: reply.sources || assistantMessage.sources,
+        }
+        await refreshHistory()
+      }
+
+      await scrollToBottom()
     }
-    await refreshHistory()
+
+    if (!completed) {
+      throw new Error('流式响应意外中断，请重试')
+    }
   } catch (error) {
-    messages.value = messages.value.filter((message) => !message.pending)
+    messages.value = messages.value.filter(
+      (message) =>
+        message.message_id !== userMessageId &&
+        message.message_id !== assistantMessageId,
+    )
     draft.value = content
     errorMessage.value = readableError(error)
   } finally {
@@ -102,6 +141,8 @@ async function sendMessage() {
 }
 
 function resetConversation() {
+  if (isSending.value) return
+
   conversation.value = null
   messages.value = []
   sourcesByMessage.value = {}
@@ -197,7 +238,12 @@ function resetConversation() {
             <p>20 条虚构电商规则，仅用于学习和测试。</p>
           </div>
 
-          <button class="secondary-button" type="button" @click="resetConversation">
+          <button
+            class="secondary-button"
+            type="button"
+            :disabled="isSending"
+            @click="resetConversation"
+          >
             创建其他会话
           </button>
         </aside>
@@ -237,7 +283,13 @@ function resetConversation() {
               <div class="message-role">
                 {{ message.role === 'user' ? '你' : 'Retail Agent' }}
               </div>
-              <p>{{ message.content }}</p>
+              <p
+                :class="{
+                  'streaming-text': message.streaming && message.content,
+                }"
+              >
+                {{ message.content }}
+              </p>
               <div v-if="message.sources?.length" class="source-list">
                 <span class="source-label">参考来源</span>
                 <div
@@ -254,7 +306,11 @@ function resetConversation() {
               </div>
             </article>
 
-            <div v-if="isSending" class="typing-indicator" aria-label="客服正在输入">
+            <div
+              v-if="isWaitingForFirstChunk"
+              class="typing-indicator"
+              aria-label="客服正在输入"
+            >
               <span></span><span></span><span></span>
             </div>
           </div>
@@ -272,7 +328,7 @@ function resetConversation() {
                 @keydown.enter.exact.prevent="sendMessage"
               ></textarea>
               <button class="send-button" type="submit" :disabled="!canSend">
-                <span>{{ isSending ? '等待回复' : '发送' }}</span>
+                <span>{{ isSending ? '接收中' : '发送' }}</span>
                 <span aria-hidden="true">↗</span>
               </button>
             </form>

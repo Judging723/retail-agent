@@ -7,7 +7,7 @@
 - 使用 FastAPI 提供 HTTP API
 - 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话、消息、订单、物流与退款
 - 调用 DeepSeek 等 OpenAI 兼容模型生成客服回复
-- 保存并传递多轮对话历史
+- 通过 SSE 流式返回模型内容，并保存多轮对话历史
 - 使用 20 条自建演示知识进行关键词 RAG，并返回来源、版本和生效日期
 - 提供 Vue 3 聊天页面，展示多轮消息和知识来源
 - 建立订单、物流和退款业务模型，并使用数据库迁移管理表结构
@@ -43,6 +43,7 @@ ConversationService
 | `GET` | `/api/v1/health` | 健康检查 |
 | `POST` | `/api/v1/conversations` | 创建会话 |
 | `POST` | `/api/v1/conversations/{conversation_no}/chat` | 发送消息并获取模型回复 |
+| `POST` | `/api/v1/conversations/{conversation_no}/chat/stream` | 通过 SSE 流式获取模型回复 |
 | `GET` | `/api/v1/conversations/{conversation_no}` | 获取会话历史 |
 
 启动服务后可访问 `http://127.0.0.1:8000/docs` 查看交互式 API 文档。
@@ -95,6 +96,30 @@ pytest -v
 ruff check app tests
 ```
 
+前端测试和生产构建：
+
+```bash
+cd ../frontend
+npm test
+npm run build
+```
+
+## 流式响应协议
+
+Vue 使用 `fetch` 读取 `/chat/stream` 返回的 Server-Sent Events。一次完整回复依次包含：
+
+```text
+sources → delta... → done
+                  ↘ error
+```
+
+- `sources`：本轮检索到的知识来源。
+- `delta`：模型生成的一小段文本，前端收到后立即追加显示。
+- `done`：完整回复已写入数据库，携带正式消息编号。
+- `error`：流式生成失败；失败时用户消息和助手消息都不会写入数据库。
+
+原有 `/chat` JSON 接口继续保留，用作非流式调用和回归基线。
+
 ## 目录说明
 
 ```text
@@ -139,11 +164,11 @@ npm run dev
 
 每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
 
-1. DeepSeek 多轮聊天与历史记录（当前阶段）
-2. 基础知识库 RAG，并展示引用来源（当前阶段）
-3. Vue 3 最小聊天页面（当前阶段）
-4. 一个合成订单查询工具
-5. 小型离线评测集
-6. 独立的微调与量化实验
+1. DeepSeek 多轮聊天、流式响应与 Vue 页面（已完成）
+2. 关键词 RAG 基线和来源引用（已完成）
+3. 文档入库、向量检索、混合检索与 Reranker
+4. 订单、物流和退款 Agent 工具
+5. 离线评测与训练数据治理
+6. 独立的微调、量化与模型部署
 
 详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。
