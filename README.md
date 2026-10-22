@@ -10,6 +10,8 @@
 - 保存并传递多轮对话历史
 - 使用 20 条自建演示知识进行关键词 RAG，并返回来源、版本和生效日期
 - 提供 Vue 3 聊天页面，展示多轮消息和知识来源
+- 为请求生成或透传 Request ID，并记录请求状态与耗时
+- 对未处理异常返回不泄露内部信息的统一错误响应
 - 使用少量自动化测试验证核心流程
 
 尚未实现向量检索、订单工具、模型微调和量化。
@@ -58,11 +60,11 @@ docker compose -f infra/compose.yaml up -d
 ### 2. 配置后端
 
 ```bash
-cd backend
+cd customer-service-app/backend
 cp .env.example .env
 ```
 
-编辑 `backend/.env`，让数据库密码与 `infra/.env` 保持一致，并填写自己的 DeepSeek API Key：
+编辑 `customer-service-app/backend/.env`，让数据库密码与 `infra/.env` 保持一致，并填写自己的 DeepSeek API Key：
 
 ```ini
 RETAIL_LLM_API_BASE=https://api.deepseek.com
@@ -95,33 +97,37 @@ ruff check app tests
 ## 目录说明
 
 ```text
-backend/
-├── data/             # 自建的虚构演示知识库
-├── app/
-│   ├── api/          # HTTP 路由和依赖
-│   ├── core/         # 配置与数据库连接
-│   ├── llm/          # OpenAI 兼容模型客户端
-│   ├── models/       # SQLAlchemy 数据表映射
-│   ├── schemas/      # 请求和响应结构
-│   └── services/     # 聊天业务流程
-├── migrations/       # Alembic 数据库迁移
-└── tests/            # 核心行为测试
+customer-service-app/
+├── backend/
+│   ├── data/             # 自建的虚构演示知识库
+│   ├── app/
+│   │   ├── api/          # HTTP 路由和依赖
+│   │   ├── core/         # 配置、数据库连接和异常响应
+│   │   ├── llm/          # OpenAI 兼容模型客户端
+│   │   ├── middleware/   # 请求日志等通用请求处理
+│   │   ├── models/       # SQLAlchemy 数据表映射
+│   │   ├── rag/          # 当前的关键词检索基线
+│   │   ├── schemas/      # 请求和响应结构
+│   │   └── services/     # 聊天业务流程
+│   ├── migrations/       # Alembic 数据库迁移
+│   └── tests/            # 核心行为测试
+└── frontend/              # Vue 3 + Vite 聊天页面
 infra/                 # 本地 MySQL Docker Compose
-frontend/              # Vue 3 + Vite 聊天页面
+docs/                  # 项目范围和学习笔记
 ```
 
 ## 演示知识库
 
-`backend/data/knowledge.json` 中的规则全部为本项目自建的虚构数据，只用于学习、测试和作品展示，不代表任何真实电商平台规则或法律意见。每条知识包含稳定的来源编号、分类、版本和生效日期，便于在回答中展示引用。
+`customer-service-app/backend/data/knowledge.json` 中的规则全部为本项目自建的虚构数据，只用于学习、测试和作品展示，不代表任何真实电商平台规则或法律意见。每条知识包含稳定的来源编号、分类、版本和生效日期，便于在回答中展示引用。
 
 公开客服数据集不直接提交到本仓库。后续如用于训练或评测，将单独核验许可证，并只提供下载与预处理说明。
 
 ## 启动前端
 
-先在 `backend/` 启动后端，再打开另一个终端：
+先在 `customer-service-app/backend/` 启动后端，再打开另一个终端：
 
 ```bash
-cd frontend
+cd customer-service-app/frontend
 npm install
 npm run dev
 ```
