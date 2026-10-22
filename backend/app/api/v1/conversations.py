@@ -126,6 +126,9 @@ async def chat(
             KnowledgeSourceResponse(
                 source_id=source.source_id,
                 title=source.title,
+                category=source.category,
+                version=source.version,
+                effective_date=source.effective_date,
             )
             for source in sources
         ],

@@ -67,6 +67,9 @@ async def test_multi_turn_chat_flow(
         {
             "source_id": "shipping-query",
             "title": "物流查询说明",
+            "category": "物流",
+            "version": "1.0",
+            "effective_date": "2026-10-01",
         }
     ]
 
@@ -76,6 +79,9 @@ async def test_multi_turn_chat_flow(
         {
             "source_id": "shipping-query",
             "title": "物流查询说明",
+            "category": "物流",
+            "version": "1.0",
+            "effective_date": "2026-10-01",
         }
     ]
 

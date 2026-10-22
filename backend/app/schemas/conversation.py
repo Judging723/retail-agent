@@ -36,6 +36,9 @@ class MessageResponse(BaseModel):
 class KnowledgeSourceResponse(BaseModel):
     source_id: str
     title: str
+    category: str
+    version: str
+    effective_date: str
 
 
 class ChatResponse(MessageResponse):

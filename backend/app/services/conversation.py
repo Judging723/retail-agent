@@ -162,7 +162,11 @@ class ConversationService:
     @staticmethod
     def _build_knowledge_context(documents: list[RetrievedDocument]) -> str:
         sections = [
-            f"[知识{i}] {document.title}\n{document.content}"
+            (
+                f"[知识{i}] {document.title}"
+                f"（版本 {document.version}，生效日期 {document.effective_date}）\n"
+                f"{document.content}"
+            )
             for i, document in enumerate(documents, start=1)
         ]
         return (

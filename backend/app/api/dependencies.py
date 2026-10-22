@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -24,8 +25,9 @@ def get_conversation_service(
 ConversationServiceDependency = Annotated[ConversationService, Depends(get_conversation_service)]
 
 
+@lru_cache
 def get_knowledge_retriever() -> KnowledgeRetriever:
-    return KnowledgeRetriever()
+    return KnowledgeRetriever.from_json()
 
 
 KnowledgeRetrieverDependency = Annotated[
