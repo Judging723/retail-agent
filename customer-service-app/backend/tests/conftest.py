@@ -6,9 +6,30 @@ from fastapi.testclient import TestClient
 from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_knowledge_retriever
 from app.core.config import get_settings
 from app.core.database import engine, get_db_session
 from app.main import create_app
+from app.rag import RetrievedDocument
+
+
+class StubKnowledgeRetriever:
+    def search(self, query: str, *, limit: int = 2) -> list[RetrievedDocument]:
+        if not query.strip() or limit <= 0:
+            return []
+        return [
+            RetrievedDocument(
+                source_id="car-test-shopping-case",
+                title="购物澄清案例：测试商品",
+                category="购物歧义与澄清",
+                content="顾客需求不完整时，客服通过询问类型、规格和使用场景进行澄清。",
+                revision="3fe3a4223357",
+                source_date="2024-04-21",
+                source_url="https://github.com/ygan/Chinese-Ambiguous-Reference",
+                license="MIT",
+                score=0.9,
+            )
+        ][:limit]
 
 
 @pytest.fixture
@@ -20,7 +41,9 @@ def anyio_backend() -> str:
 def application() -> Iterator[FastAPI]:
     get_settings.cache_clear()
     app = create_app()
+    app.dependency_overrides[get_knowledge_retriever] = StubKnowledgeRetriever
     yield app
+    app.dependency_overrides.pop(get_knowledge_retriever, None)
     get_settings.cache_clear()
 
 

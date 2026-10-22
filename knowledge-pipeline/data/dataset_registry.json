@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "last_reviewed": "2026-10-22",
+  "policy": "Only datasets with a verified license may enter experiments. Dialogue and benchmark datasets are not authoritative customer-service knowledge.",
+  "datasets": [
+    {
+      "id": "chinese_ambiguous_reference",
+      "name": "Chinese Ambiguous Reference",
+      "source_url": "https://github.com/ygan/Chinese-Ambiguous-Reference",
+      "license": "MIT",
+      "license_url": "https://github.com/ygan/Chinese-Ambiguous-Reference/blob/main/LICENSE",
+      "access": "direct",
+      "review_status": "approved_for_experiment",
+      "tasks": ["ambiguity_detection", "clarification_strategy"],
+      "recommended_use": "Build clarification examples for underspecified shopping questions.",
+      "rag_knowledge_base_candidate": false,
+      "rag_example_library_use": "approved_for_clarification_examples_only"
+    },
+    {
+      "id": "crosswoz",
+      "name": "CrossWOZ",
+      "source_url": "https://github.com/thu-coai/CrossWOZ",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/thu-coai/CrossWOZ/blob/master/LICENSE",
+      "access": "direct",
+      "review_status": "approved_for_experiment",
+      "tasks": ["intent_classification", "slot_filling", "dialogue_state_tracking"],
+      "recommended_use": "Learn NLU data formats and transfer-learning baselines; its domains are not ecommerce.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "massive_zh_cn",
+      "name": "MASSIVE (zh-CN subset)",
+      "source_url": "https://github.com/alexa/massive",
+      "license": "CC-BY-4.0",
+      "license_url": "https://huggingface.co/datasets/AmazonScience/massive/blob/f2c696773f8ea5abcb076b627364d654f3f751a2/LICENSE",
+      "access": "direct",
+      "review_status": "approved_with_attribution",
+      "tasks": ["intent_classification", "slot_filling"],
+      "recommended_use": "Use the Chinese subset as a general NLU baseline and retain attribution.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "amazon_esci",
+      "name": "Amazon Shopping Queries (ESCI)",
+      "source_url": "https://github.com/amazon-science/esci-data",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/amazon-science/esci-data/blob/main/LICENSE",
+      "access": "direct",
+      "review_status": "approved_for_experiment",
+      "tasks": ["query_product_relevance", "reranking"],
+      "recommended_use": "Optional relevance or reranker experiments; it is not a Chinese customer-service corpus.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "jddc_2_1",
+      "name": "JDDC 2.1",
+      "source_url": "https://github.com/hrlinlp/jddc2.1",
+      "license": "Terms supplied after application must be reviewed",
+      "license_url": null,
+      "access": "application_required",
+      "review_status": "approval_required",
+      "tasks": ["response_generation", "query_rewriting", "summarization", "multimodal_dialogue"],
+      "recommended_use": "Apply with an institutional email, then review the granted terms before use.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "ecommerce_dialogue_corpus",
+      "name": "E-commerce Dialogue Corpus",
+      "source_url": "https://github.com/cooelf/DeepUtteranceAggregation",
+      "license": null,
+      "license_url": null,
+      "access": "repository_download",
+      "review_status": "license_review_required",
+      "tasks": ["response_selection", "dialogue_context_modeling"],
+      "recommended_use": "Do not redistribute or train on it until the author clarifies the license.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "csds",
+      "name": "CSDS",
+      "source_url": "https://github.com/xiaolinAndy/CSDS",
+      "license": null,
+      "license_url": null,
+      "access": "repository_download",
+      "review_status": "license_review_required",
+      "tasks": ["customer_service_dialogue_summarization"],
+      "recommended_use": "Potential summarization benchmark; verify authorization before downloading or redistributing.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "fewclue_eprstmt",
+      "name": "FewCLUE EPRSTMT",
+      "source_url": "https://github.com/CLUEbenchmark/FewCLUE",
+      "license": null,
+      "license_url": null,
+      "access": "repository_download",
+      "review_status": "license_review_required",
+      "tasks": ["ecommerce_review_sentiment"],
+      "recommended_use": "Potential few-shot sentiment baseline; verify the dataset license first.",
+      "rag_knowledge_base_candidate": false
+    },
+    {
+      "id": "smp_ecdt_mirror",
+      "name": "SMP ECDT data mirror",
+      "source_url": "https://github.com/hml-ubt/SMP2017-2019-ECDT-data",
+      "license": null,
+      "license_url": null,
+      "access": "third_party_mirror",
+      "review_status": "license_review_required",
+      "tasks": ["intent_classification", "domain_classification"],
+      "recommended_use": "Prefer an official source and verify redistribution rights before use.",
+      "rag_knowledge_base_candidate": false
+    }
+  ]
+}

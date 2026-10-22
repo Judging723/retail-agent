@@ -15,9 +15,9 @@ const isSending = ref(false)
 const messageList = ref(null)
 
 const suggestions = [
-  '普通商品签收五天后还能无理由退货吗？',
-  '退款审核通过后多久到账？',
-  '物流两天没有更新怎么办？',
+  '我想买苹果，哪一种更适合直接吃？',
+  '想买一件防晒衣，帮我推荐一下。',
+  '给我来两碗牛肉汤。',
 ]
 
 const canStart = computed(() => customerNo.value.trim() && !isStarting.value)
@@ -234,8 +234,8 @@ function resetConversation() {
           </dl>
 
           <div class="knowledge-note">
-            <strong>演示知识库</strong>
-            <p>20 条虚构电商规则，仅用于学习和测试。</p>
+            <strong>公开数据知识库</strong>
+            <p>1073 条真实购物澄清案例，来源为 MIT 许可公开数据集。</p>
           </div>
 
           <button
@@ -292,17 +292,20 @@ function resetConversation() {
               </p>
               <div v-if="message.sources?.length" class="source-list">
                 <span class="source-label">参考来源</span>
-                <div
+                <a
                   v-for="source in message.sources"
                   :key="source.source_id"
                   class="source-chip"
+                  :href="source.source_url"
+                  target="_blank"
+                  rel="noreferrer"
                 >
                   <strong>{{ source.title }}</strong>
                   <small>
-                    {{ source.category }} · v{{ source.version }} ·
-                    {{ source.effective_date }}
+                    {{ source.category }} · {{ source.license }} ·
+                    {{ source.source_date }} · {{ source.revision }}
                   </small>
-                </div>
+                </a>
               </div>
             </article>
 

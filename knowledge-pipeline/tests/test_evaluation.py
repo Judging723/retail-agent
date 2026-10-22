@@ -3,17 +3,17 @@ from pathlib import Path
 
 import pytest
 
-from knowledge_pipeline.baseline import keyword_search
-from knowledge_pipeline.evaluation import (
+from knowledge_pipeline.evaluation.metrics import (
     RetrievalCase,
     evaluate_retrieval,
     load_retrieval_cases,
 )
-from knowledge_pipeline.loader import load_documents
+from knowledge_pipeline.ingestion.loader import load_documents
+from knowledge_pipeline.retrieval.keyword import keyword_search
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PROJECT_ROOT.parent
-EVALUATION_PATH = PROJECT_ROOT / "evaluation" / "retrieval_cases.json"
+EVALUATION_PATH = PROJECT_ROOT / "eval" / "retrieval_cases.json"
 KNOWLEDGE_PATH = REPOSITORY_ROOT / "customer-service-app" / "backend" / "data" / "knowledge.json"
 
 
@@ -82,8 +82,8 @@ def test_keyword_baseline_on_fixed_evaluation_set() -> None:
 
     assert metrics.positive_cases == 10
     assert metrics.negative_cases == 2
-    assert metrics.hit_at_k == 0.4
-    assert metrics.mrr == 0.4
+    assert metrics.hit_at_k == 1.0
+    assert metrics.mrr == 1.0
     assert metrics.negative_accuracy == 1.0
 
 

@@ -1,15 +1,15 @@
 from pathlib import Path
 from time import perf_counter
 
-from knowledge_pipeline.embeddings import SentenceTransformerEmbedder
-from knowledge_pipeline.evaluation import evaluate_retrieval, load_retrieval_cases
-from knowledge_pipeline.loader import load_documents
-from knowledge_pipeline.semantic import SemanticRetriever
+from knowledge_pipeline.evaluation.metrics import evaluate_retrieval, load_retrieval_cases
+from knowledge_pipeline.ingestion.loader import load_documents
+from knowledge_pipeline.retrieval.embeddings import SentenceTransformerEmbedder
+from knowledge_pipeline.retrieval.semantic import SemanticRetriever
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PROJECT_ROOT.parent
 KNOWLEDGE_PATH = REPOSITORY_ROOT / "customer-service-app" / "backend" / "data" / "knowledge.json"
-EVALUATION_PATH = PROJECT_ROOT / "evaluation" / "retrieval_cases.json"
+EVALUATION_PATH = PROJECT_ROOT / "eval" / "retrieval_cases.json"
 
 
 def main() -> None:

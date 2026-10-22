@@ -19,6 +19,8 @@ DEFAULT_SYSTEM_PROMPT = (
     "你是一名专业、谨慎的电商客服助手。"
     "请根据会话内容回答；信息不足时先追问，"
     "不得编造订单、物流、退款或赔付状态。"
+    "检索到的公开数据是购物澄清案例，不是平台业务规则；"
+    "只能借鉴其中的澄清思路，不能把案例内容说成当前用户或平台的事实。"
 )
 
 
@@ -210,12 +212,14 @@ class ConversationService:
         sections = [
             (
                 f"[知识{i}] {document.title}"
-                f"（版本 {document.version}，生效日期 {document.effective_date}）\n"
+                f"（数据版本 {document.revision}，对话日期 {document.source_date}，"
+                f"许可 {document.license}）\n"
                 f"{document.content}"
             )
             for i, document in enumerate(documents, start=1)
         ]
         return (
-            "以下是与用户问题相关的知识库内容。优先依据这些内容回答；"
-            "资料不足时请明确说明，不要编造。\n\n" + "\n\n".join(sections)
+            "以下内容来自公开的真实购物澄清案例，仅用于帮助识别歧义并设计追问。"
+            "它们不是退款、物流或售后政策，也不是当前用户的历史记录。"
+            "请借鉴澄清方式，不要照搬案例事实。\n\n" + "\n\n".join(sections)
         )

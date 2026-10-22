@@ -1,4 +1,4 @@
-from knowledge_pipeline.schemas import KnowledgeChunk, KnowledgeDocument
+from knowledge_pipeline.ingestion.schemas import KnowledgeChunk, KnowledgeDocument
 
 
 def chunk_document(
@@ -25,15 +25,17 @@ def chunk_document(
         end = min(start + max_chars, len(text))
         chunks.append(
             KnowledgeChunk(
-                chunk_id=f"{document.source_id}:{document.version}:{position:04d}",
+                chunk_id=f"{document.source_id}:{document.revision}:{position:04d}",
                 source_id=document.source_id,
                 text=text[start:end],
                 position=position,
                 title=document.title,
                 category=document.category,
                 keywords=document.keywords,
-                version=document.version,
-                effective_date=document.effective_date,
+                revision=document.revision,
+                source_date=document.source_date,
+                source_url=document.source_url,
+                license=document.license,
             )
         )
 

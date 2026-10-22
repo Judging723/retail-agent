@@ -1,8 +1,17 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_MILVUS_PATH = (
+    Path(__file__).resolve().parents[4]
+    / "knowledge-pipeline"
+    / "data"
+    / "vector_store"
+    / "retail_agent.db"
+)
 
 
 class Settings(BaseSettings):
@@ -29,6 +38,9 @@ class Settings(BaseSettings):
     llm_api_base: str = "https://api.deepseek.com"
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = "deepseek-flash"
+
+    milvus_uri: str = str(DEFAULT_MILVUS_PATH)
+    milvus_collection: str = "retail_knowledge"
 
 
 @lru_cache

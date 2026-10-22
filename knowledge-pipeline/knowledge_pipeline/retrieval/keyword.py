@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from knowledge_pipeline.schemas import KnowledgeDocument
+from knowledge_pipeline.ingestion.schemas import KnowledgeDocument
 
 
 def keyword_search(

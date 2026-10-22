@@ -2,8 +2,8 @@ from collections.abc import Sequence
 
 import pytest
 
-from knowledge_pipeline.schemas import KnowledgeDocument
-from knowledge_pipeline.semantic import SemanticRetriever
+from knowledge_pipeline.ingestion.schemas import KnowledgeDocument
+from knowledge_pipeline.retrieval.semantic import SemanticRetriever
 
 
 class FakeEmbedder:
@@ -49,6 +49,8 @@ def _make_document(source_id: str, *, title: str, content: str) -> KnowledgeDocu
         category="test",
         content=content,
         keywords=(),
-        version="1.0",
-        effective_date="2026-10-01",
+        revision="test-revision",
+        source_date="2024-04-21",
+        source_url="https://example.com/dataset",
+        license="MIT",
     )

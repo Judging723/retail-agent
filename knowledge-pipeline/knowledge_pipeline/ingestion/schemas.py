@@ -10,8 +10,10 @@ class KnowledgeDocument:
     category: str
     content: str
     keywords: tuple[str, ...]
-    version: str
-    effective_date: str
+    revision: str
+    source_date: str
+    source_url: str
+    license: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,5 +27,7 @@ class KnowledgeChunk:
     title: str
     category: str
     keywords: tuple[str, ...]
-    version: str
-    effective_date: str
+    revision: str
+    source_date: str
+    source_url: str
+    license: str

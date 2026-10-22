@@ -481,6 +481,11 @@ textarea:focus {
   border: 1px solid #dbe6de;
   border-radius: 11px;
   background: #f8fbf8;
+  text-decoration: none;
+}
+
+.source-chip:hover {
+  border-color: #9eb9aa;
 }
 
 .source-chip strong {

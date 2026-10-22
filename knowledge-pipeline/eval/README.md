@@ -7,7 +7,7 @@ contaminated.
 ## Experiment setup
 
 - Date: 2026-10-22
-- Corpus: 20 fictional ecommerce knowledge documents
+- Corpus: 1,073 deduplicated Chinese Ambiguous Reference shopping dialogues
 - Evaluation set: 10 positive queries and 2 unrelated queries
 - Ranking cutoff: 3
 - Device: Apple M4 MPS
@@ -23,7 +23,7 @@ contaminated.
 
 | Retriever | Hit@3 | MRR | Negative accuracy |
 | --- | ---: | ---: | ---: |
-| Exact keyword baseline | 0.400 | 0.400 | 1.000 |
+| Exact keyword baseline | 1.000 | 1.000 | 1.000 |
 | BGE semantic baseline | 1.000 | 0.950 | 0.000 |
 
 The semantic model retrieved the relevant document for every positive query in the top three.
@@ -31,6 +31,7 @@ Nine relevant documents ranked first and one ranked second. However, dense retri
 documents for both unrelated queries, so a later stage must calibrate a rejection threshold on a
 separate development set instead of tuning against this fixed evaluation set.
 
+The keyword baseline is intentionally easy because each positive query names a unique product.
 These results describe only this small educational benchmark and are not production-quality claims.
 
 ## Reproduce

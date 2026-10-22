@@ -2,8 +2,8 @@ from itertools import pairwise
 
 import pytest
 
-from knowledge_pipeline.chunker import chunk_document
-from knowledge_pipeline.schemas import KnowledgeDocument
+from knowledge_pipeline.ingestion.chunker import chunk_document
+from knowledge_pipeline.ingestion.schemas import KnowledgeDocument
 
 
 def test_short_document_creates_one_chunk() -> None:
@@ -12,7 +12,7 @@ def test_short_document_creates_one_chunk() -> None:
     chunks = chunk_document(document, max_chars=10, overlap_chars=3)
 
     assert len(chunks) == 1
-    assert chunks[0].chunk_id == "shipping-policy:1.0:0000"
+    assert chunks[0].chunk_id == "shipping-policy:test-revision:0000"
     assert chunks[0].text == "短文本"
     assert chunks[0].position == 0
     assert chunks[0].category == document.category
@@ -33,10 +33,10 @@ def test_long_document_creates_overlapping_chunks() -> None:
     assert all(len(chunk.text) <= 10 for chunk in chunks)
     assert all(previous.text[-3:] == current.text[:3] for previous, current in pairwise(chunks))
     assert [chunk.chunk_id for chunk in chunks] == [
-        "shipping-policy:1.0:0000",
-        "shipping-policy:1.0:0001",
-        "shipping-policy:1.0:0002",
-        "shipping-policy:1.0:0003",
+        "shipping-policy:test-revision:0000",
+        "shipping-policy:test-revision:0001",
+        "shipping-policy:test-revision:0002",
+        "shipping-policy:test-revision:0003",
     ]
 
 
@@ -64,6 +64,8 @@ def _make_document(content: str) -> KnowledgeDocument:
         category="物流",
         content=content,
         keywords=("物流", "发货"),
-        version="1.0",
-        effective_date="2026-10-01",
+        revision="test-revision",
+        source_date="2024-04-21",
+        source_url="https://example.com/dataset",
+        license="MIT",
     )

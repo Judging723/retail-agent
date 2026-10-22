@@ -27,7 +27,11 @@ ConversationServiceDependency = Annotated[ConversationService, Depends(get_conve
 
 @lru_cache
 def get_knowledge_retriever() -> KnowledgeRetriever:
-    return KnowledgeRetriever.from_json()
+    settings = get_settings()
+    return KnowledgeRetriever.from_milvus(
+        settings.milvus_uri,
+        collection_name=settings.milvus_collection,
+    )
 
 
 KnowledgeRetrieverDependency = Annotated[

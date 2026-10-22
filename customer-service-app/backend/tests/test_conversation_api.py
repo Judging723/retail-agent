@@ -94,11 +94,13 @@ async def test_multi_turn_chat_flow(
     assert first_response.json()["role"] == "assistant"
     assert first_response.json()["sources"] == [
         {
-            "source_id": "shipping-query",
-            "title": "物流查询说明",
-            "category": "物流",
-            "version": "1.0",
-            "effective_date": "2026-10-01",
+            "source_id": "car-test-shopping-case",
+            "title": "购物澄清案例：测试商品",
+            "category": "购物歧义与澄清",
+            "revision": "3fe3a4223357",
+            "source_date": "2024-04-21",
+            "source_url": "https://github.com/ygan/Chinese-Ambiguous-Reference",
+            "license": "MIT",
         }
     ]
 
@@ -106,11 +108,13 @@ async def test_multi_turn_chat_flow(
     assert second_response.json()["sequence_no"] == 4
     assert second_response.json()["sources"] == [
         {
-            "source_id": "shipping-query",
-            "title": "物流查询说明",
-            "category": "物流",
-            "version": "1.0",
-            "effective_date": "2026-10-01",
+            "source_id": "car-test-shopping-case",
+            "title": "购物澄清案例：测试商品",
+            "category": "购物歧义与澄清",
+            "revision": "3fe3a4223357",
+            "source_date": "2024-04-21",
+            "source_url": "https://github.com/ygan/Chinese-Ambiguous-Reference",
+            "license": "MIT",
         }
     ]
 
@@ -143,7 +147,8 @@ async def test_multi_turn_chat_flow(
         "system",
         "user",
     ]
-    assert "物流查询说明" in first_prompt[1]["content"]
+    assert "购物澄清案例：测试商品" in first_prompt[1]["content"]
+    assert "不是退款、物流或售后政策" in first_prompt[1]["content"]
 
 
 async def test_stream_chat_flow(
@@ -182,7 +187,7 @@ async def test_stream_chat_flow(
         "delta",
         "done",
     ]
-    assert events[0][1]["sources"][0]["source_id"] == "shipping-query"
+    assert events[0][1]["sources"][0]["source_id"] == "car-test-shopping-case"
     assert "".join(data["content"] for event, data in events if event == "delta") == (
         "正在为您查询物流。"
     )

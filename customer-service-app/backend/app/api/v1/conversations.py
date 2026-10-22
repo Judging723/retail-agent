@@ -213,8 +213,10 @@ def _build_source_responses(
             source_id=source.source_id,
             title=source.title,
             category=source.category,
-            version=source.version,
-            effective_date=source.effective_date,
+            revision=source.revision,
+            source_date=source.source_date,
+            source_url=source.source_url,
+            license=source.license,
         )
         for source in sources
     ]

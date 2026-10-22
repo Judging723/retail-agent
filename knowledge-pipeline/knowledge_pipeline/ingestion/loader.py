@@ -2,15 +2,17 @@ import json
 from pathlib import Path
 from typing import Any
 
-from knowledge_pipeline.schemas import KnowledgeDocument
+from knowledge_pipeline.ingestion.schemas import KnowledgeDocument
 
 _STRING_FIELDS = (
     "source_id",
     "title",
     "category",
     "content",
-    "version",
-    "effective_date",
+    "revision",
+    "source_date",
+    "source_url",
+    "license",
 )
 
 
@@ -65,8 +67,10 @@ def _parse_document(raw_document: Any, *, index: int) -> KnowledgeDocument:
         category=values["category"],
         content=values["content"],
         keywords=tuple(keywords),
-        version=values["version"],
-        effective_date=values["effective_date"],
+        revision=values["revision"],
+        source_date=values["source_date"],
+        source_url=values["source_url"],
+        license=values["license"],
     )
 
 

@@ -7,8 +7,10 @@
       "category": "售后",
       "content": "符合完好标准的普通商品，可在签收次日起七天内申请无理由退货。",
       "keywords": ["退货", "七天", "签收"],
-      "version": "1.0",
-      "effective_date": "2026-10-01"
+      "revision": "test-revision",
+      "source_date": "2024-04-21",
+      "source_url": "https://example.com/dataset",
+      "license": "MIT"
     },
     {
       "source_id": "delayed-delivery",
@@ -16,8 +18,10 @@
       "category": "物流",
       "content": "物流轨迹超过四十八小时未更新时，可以联系人工客服登记核查。",
       "keywords": ["物流不更新", "延迟", "催物流"],
-      "version": "1.0",
-      "effective_date": "2026-10-01"
+      "revision": "test-revision",
+      "source_date": "2024-04-22",
+      "source_url": "https://example.com/dataset",
+      "license": "MIT"
     }
   ]
 }

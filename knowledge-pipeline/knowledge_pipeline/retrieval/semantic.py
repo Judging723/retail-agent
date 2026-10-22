@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from knowledge_pipeline.embeddings import TextEmbedder
-from knowledge_pipeline.schemas import KnowledgeDocument
+from knowledge_pipeline.ingestion.schemas import KnowledgeDocument
+from knowledge_pipeline.retrieval.embeddings import TextEmbedder
 
 
 @dataclass(frozen=True, slots=True)
