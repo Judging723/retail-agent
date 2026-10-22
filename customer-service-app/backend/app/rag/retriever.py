@@ -1,7 +1,10 @@
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+from app.rag.bm25 import DEFAULT_KNOWLEDGE_PATH, BM25Retriever, BM25SearchResult
 
 DEFAULT_MILVUS_PATH = (
     Path(__file__).resolve().parents[4]
@@ -79,14 +82,20 @@ class KnowledgeRetriever:
         *,
         collection_name: str = DEFAULT_COLLECTION_NAME,
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
+        lexical_retriever: BM25Retriever | None = None,
+        rrf_k: int = 60,
     ) -> None:
         if not 0 <= min_score <= 1:
             raise ValueError("min_score must be between zero and one")
+        if rrf_k <= 0:
+            raise ValueError("rrf_k must be greater than zero")
 
         self._client = client
         self._embedder = embedder
         self._collection_name = collection_name
         self._min_score = min_score
+        self._lexical_retriever = lexical_retriever
+        self._rrf_k = rrf_k
 
     @classmethod
     def from_milvus(
@@ -95,6 +104,7 @@ class KnowledgeRetriever:
         *,
         collection_name: str = DEFAULT_COLLECTION_NAME,
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
+        knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH,
     ) -> "KnowledgeRetriever":
         from pymilvus import MilvusClient
 
@@ -106,6 +116,7 @@ class KnowledgeRetriever:
             embedder,
             collection_name=collection_name,
             min_score=min_score,
+            lexical_retriever=BM25Retriever.from_json(knowledge_path),
         )
 
     def search(self, query: str, *, limit: int = 2) -> list[RetrievedDocument]:
@@ -114,6 +125,20 @@ class KnowledgeRetriever:
         if limit <= 0:
             raise ValueError("limit must be greater than zero")
 
+        if self._lexical_retriever is None:
+            return self._search_vectors(query, limit=limit)
+
+        candidate_limit = max(8, limit * 4)
+        vector_results = self._search_vectors(query, limit=candidate_limit)
+        lexical_results = self._lexical_retriever.search(query, limit=candidate_limit)
+        return self._fuse_results(vector_results, lexical_results, limit=limit)
+
+    def close(self) -> None:
+        close = getattr(self._client, "close", None)
+        if callable(close):
+            close()
+
+    def _search_vectors(self, query: str, *, limit: int) -> list[RetrievedDocument]:
         query_embedding = self._embedder.encode_queries([query])[0]
         response = self._client.search(
             collection_name=self._collection_name,
@@ -153,3 +178,67 @@ class KnowledgeRetriever:
                 break
 
         return results
+
+    def _fuse_results(
+        self,
+        vector_results: Sequence[RetrievedDocument],
+        lexical_results: Sequence[BM25SearchResult],
+        *,
+        limit: int,
+    ) -> list[RetrievedDocument]:
+        documents: dict[str, RetrievedDocument] = {}
+        fused_scores: Counter[str] = Counter()
+        retrieval_channels: dict[str, set[str]] = {}
+
+        for rank, document in enumerate(vector_results, start=1):
+            documents[document.source_id] = document
+            fused_scores[document.source_id] += 1 / (self._rrf_k + rank)
+            retrieval_channels.setdefault(document.source_id, set()).add("vector")
+
+        for rank, result in enumerate(lexical_results, start=1):
+            source_id = result.document.source_id
+            documents.setdefault(source_id, _from_bm25_result(result))
+            fused_scores[source_id] += 1 / (self._rrf_k + rank)
+            retrieval_channels.setdefault(source_id, set()).add("bm25")
+
+        ranked_source_ids = sorted(
+            documents,
+            key=lambda source_id: (
+                -fused_scores[source_id],
+                -len(retrieval_channels[source_id]),
+                source_id,
+            ),
+        )
+        return [
+            _with_score(documents[source_id], fused_scores[source_id])
+            for source_id in ranked_source_ids[:limit]
+        ]
+
+
+def _from_bm25_result(result: BM25SearchResult) -> RetrievedDocument:
+    document = result.document
+    return RetrievedDocument(
+        source_id=document.source_id,
+        title=document.title,
+        category=document.category,
+        content=document.content,
+        revision=document.revision,
+        source_date=document.source_date,
+        source_url=document.source_url,
+        license=document.license,
+        score=result.score,
+    )
+
+
+def _with_score(document: RetrievedDocument, score: float) -> RetrievedDocument:
+    return RetrievedDocument(
+        source_id=document.source_id,
+        title=document.title,
+        category=document.category,
+        content=document.content,
+        revision=document.revision,
+        source_date=document.source_date,
+        source_url=document.source_url,
+        license=document.license,
+        score=score,
+    )

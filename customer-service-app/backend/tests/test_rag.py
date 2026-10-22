@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from app.rag import KnowledgeRetriever
+from app.rag import BM25Document, BM25Retriever, KnowledgeRetriever
 
 
 class FakeEmbedder:
@@ -73,6 +73,24 @@ def test_invalid_relevance_threshold_is_rejected() -> None:
         KnowledgeRetriever(FakeMilvusClient(), FakeEmbedder(), min_score=1.1)
 
 
+def test_hybrid_retrieval_promotes_exact_bm25_match() -> None:
+    lexical_retriever = BM25Retriever(
+        [
+            _bm25_document("car-apple", "苹果"),
+            _bm25_document("car-phone", "手机"),
+        ]
+    )
+    retriever = KnowledgeRetriever(
+        FakeMilvusClient(),
+        FakeEmbedder(),
+        lexical_retriever=lexical_retriever,
+    )
+
+    results = retriever.search("我想买手机", limit=2)
+
+    assert [result.source_id for result in results] == ["car-phone", "car-apple"]
+
+
 def _hit(source_id: str, merchandise: str, text: str, score: float) -> dict:
     return {
         "distance": score,
@@ -87,3 +105,18 @@ def _hit(source_id: str, merchandise: str, text: str, score: float) -> dict:
             "license": "MIT",
         },
     }
+
+
+def _bm25_document(source_id: str, merchandise: str) -> BM25Document:
+    return BM25Document(
+        source_id=source_id,
+        title=f"购物澄清案例：{merchandise}",
+        category="购物歧义与澄清",
+        content=f"{merchandise}选购案例",
+        revision="3fe3a4223357",
+        source_date="2024-04-21",
+        source_url="https://github.com/ygan/Chinese-Ambiguous-Reference",
+        license="MIT",
+        index_text=merchandise,
+        product_phrases=(merchandise.casefold(),),
+    )

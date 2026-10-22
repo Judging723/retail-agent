@@ -8,7 +8,7 @@
 - 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话、消息、订单、物流与退款
 - 调用 DeepSeek 等 OpenAI 兼容模型生成客服回复
 - 通过 SSE 流式返回模型内容，并保存多轮对话历史
-- 使用 1073 条公开真实购物对话案例进行在线向量 RAG，并返回来源、许可和数据版本
+- 使用 1073 条公开真实购物对话案例进行 BM25 + Milvus 混合 RAG，并返回来源、许可和数据版本
 - 在独立知识流水线中实现数据下载转换、BGE 中文向量检索、Milvus 持久化和固定离线评测
 - 提供 Vue 3 聊天页面，展示多轮消息和知识来源
 - 建立订单、物流和退款业务模型，并使用数据库迁移管理表结构
@@ -27,7 +27,7 @@ FastAPI Router
   ↓
 ConversationService
   ├── SQLAlchemy → MySQL
-  ├── BGE + Milvus Retriever → 公开购物澄清案例
+  ├── BM25 + BGE/Milvus + RRF → 公开购物澄清案例
   └── OpenAICompatibleLLMClient → DeepSeek API
 ```
 
@@ -146,7 +146,7 @@ customer-service-app/
 │   │   ├── llm/          # OpenAI 兼容模型客户端
 │   │   ├── middleware/   # 请求日志等通用请求处理
 │   │   ├── models/       # SQLAlchemy 数据表映射
-│   │   ├── rag/          # 在线 BGE 查询编码和 Milvus 检索
+│   │   ├── rag/          # 在线 BM25、Milvus 向量检索和 RRF 融合
 │   │   ├── schemas/      # 请求和响应结构
 │   │   └── services/     # 聊天业务流程
 │   ├── migrations/       # Alembic 数据库迁移
@@ -201,6 +201,11 @@ python scripts/search_milvus.py "我想买一件防晒衣，帮我推荐一下"
 测试集反向调参；可通过 `RETAIL_RAG_MIN_SCORE` 覆盖。它是当前数据与模型组合的实验基线，
 更换 Embedding 模型或知识库后必须重新校准。
 
+在线服务还会用 BM25 检索精确商品名称，并通过 Reciprocal Rank Fusion（RRF）与 Milvus
+结果融合。两路检索分数的量纲不同，因此不直接相加原始分数。BM25 只接受完整商品短语命中，
+避免把“Python 装饰器”错误匹配成“黑板装饰墙贴”。固定评测结果为 Hit@3 `1.000`、MRR
+`1.000`、负例准确率 `1.000`；这些数字只描述当前 12 条教育性测试集。
+
 ## 启动前端
 
 先在 `customer-service-app/backend/` 启动后端，再打开另一个终端：
@@ -219,7 +224,7 @@ npm run dev
 
 1. DeepSeek 多轮聊天、流式响应与 Vue 页面（已完成）
 2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
-3. 公开数据转换、Milvus 入库和在线向量检索（已完成）
+3. 公开数据转换、Milvus 入库、相关性闸门和混合检索（已完成）
 4. 订单、物流和退款 Agent 工具
 5. 离线评测与训练数据治理
 6. 独立的微调、量化与模型部署
