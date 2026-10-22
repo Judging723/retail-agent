@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "description": "固定的演示知识库检索评测集。禁止根据测试问题反向修改关键词。",
+  "cases": [
+    {
+      "case_id": "price-protection-direct-001",
+      "query": "商品刚买就降价了，可以申请价保吗？",
+      "relevant_source_ids": ["price-protection"],
+      "tags": ["优惠", "关键词直述"]
+    },
+    {
+      "case_id": "address-change-direct-001",
+      "query": "我想修改收货地址",
+      "relevant_source_ids": ["address-change"],
+      "tags": ["订单", "关键词直述"]
+    },
+    {
+      "case_id": "refund-timing-direct-001",
+      "query": "退款到账一般要几个工作日？",
+      "relevant_source_ids": ["refund-timing"],
+      "tags": ["退款", "关键词直述"]
+    },
+    {
+      "case_id": "invoice-apply-direct-001",
+      "query": "怎么申请电子发票？",
+      "relevant_source_ids": ["invoice-apply"],
+      "tags": ["发票", "关键词直述"]
+    },
+    {
+      "case_id": "shipping-delay-paraphrase-001",
+      "query": "我的快递两天没动了怎么办？",
+      "relevant_source_ids": ["delayed-delivery"],
+      "tags": ["物流", "语义改写"]
+    },
+    {
+      "case_id": "refund-timing-paraphrase-001",
+      "query": "钱退回来还要等多久？",
+      "relevant_source_ids": ["refund-timing"],
+      "tags": ["退款", "语义改写"]
+    },
+    {
+      "case_id": "address-change-paraphrase-001",
+      "query": "地址写错了还能换一个吗？",
+      "relevant_source_ids": ["address-change"],
+      "tags": ["订单", "语义改写"]
+    },
+    {
+      "case_id": "order-cancel-paraphrase-001",
+      "query": "这单我不要了，能撤掉吗？",
+      "relevant_source_ids": ["order-cancel"],
+      "tags": ["订单", "语义改写"]
+    },
+    {
+      "case_id": "damaged-item-paraphrase-001",
+      "query": "刚收到的杯子裂了，应该怎么处理？",
+      "relevant_source_ids": ["damaged-item"],
+      "tags": ["售后", "语义改写"]
+    },
+    {
+      "case_id": "human-service-paraphrase-001",
+      "query": "我想找真人客服",
+      "relevant_source_ids": ["human-service"],
+      "tags": ["客服", "语义改写"]
+    },
+    {
+      "case_id": "unrelated-weather-001",
+      "query": "今天的天气怎么样？",
+      "relevant_source_ids": [],
+      "tags": ["无关问题"]
+    },
+    {
+      "case_id": "unrelated-cooking-001",
+      "query": "红烧肉应该怎么做？",
+      "relevant_source_ids": [],
+      "tags": ["无关问题"]
+    }
+  ]
+}

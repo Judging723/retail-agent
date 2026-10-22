@@ -1,0 +1,23 @@
+{
+  "dataset_name": "测试知识库",
+  "documents": [
+    {
+      "source_id": "return-policy",
+      "title": "七天无理由退货规则",
+      "category": "售后",
+      "content": "符合完好标准的普通商品，可在签收次日起七天内申请无理由退货。",
+      "keywords": ["退货", "七天", "签收"],
+      "version": "1.0",
+      "effective_date": "2026-10-01"
+    },
+    {
+      "source_id": "delayed-delivery",
+      "title": "物流长时间未更新处理",
+      "category": "物流",
+      "content": "物流轨迹超过四十八小时未更新时，可以联系人工客服登记核查。",
+      "keywords": ["物流不更新", "延迟", "催物流"],
+      "version": "1.0",
+      "effective_date": "2026-10-01"
+    }
+  ]
+}
