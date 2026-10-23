@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_reviewed": "2026-10-22",
+  "last_reviewed": "2026-10-23",
   "policy": "Only datasets with a verified license may enter experiments. Dialogue and benchmark datasets are not authoritative customer-service knowledge.",
   "datasets": [
     {
@@ -15,6 +15,18 @@
       "recommended_use": "Build clarification examples for underspecified shopping questions.",
       "rag_knowledge_base_candidate": false,
       "rag_example_library_use": "approved_for_clarification_examples_only"
+    },
+    {
+      "id": "kapibala_sales_dialogues",
+      "name": "Kapibala Sales Dialogues",
+      "source_url": "https://huggingface.co/datasets/kapibala-ai/kapibala-sales-dialogues",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "access": "direct",
+      "review_status": "approved_with_attribution",
+      "tasks": ["sentiment_classification", "customer_intent", "sales_dialogue_analysis"],
+      "recommended_use": "Use Chinese customer messages for a synthetic, model-pseudo-labeled sentiment baseline; do not describe it as real customer data or human gold labels.",
+      "rag_knowledge_base_candidate": false
     },
     {
       "id": "crosswoz",

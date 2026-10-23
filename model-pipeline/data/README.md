@@ -9,5 +9,10 @@ rules, parser recoveries, split sizes, redaction counts, and output checksums.
 The NLU stage adds `reports/nlu_dataset_manifest.json` for weak-label provenance and
 `reports/nlu_baseline.json` for fixed development/test metrics. Trained `.joblib` artifacts stay outside Git.
 
+The sentiment stage adds `reports/sentiment_dataset_manifest.json` and
+`reports/sentiment_baseline.json`. Its downloaded CC BY 4.0 raw files, processed JSONL files, and trained
+artifact stay outside Git; the committed reports retain the exact revision, checksums, split policy, label
+provenance, and metrics.
+
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.
