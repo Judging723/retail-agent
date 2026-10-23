@@ -7,6 +7,8 @@ fine-tuning (SFT) data and trains an interpretable clarification baseline.
 
 1. Reads the pinned MIT-licensed Chinese Ambiguous Reference dataset already converted by the knowledge pipeline.
 2. Repairs only known formatting noise such as missing quotes, missing speaker separators, and wrapped lines.
+   A source dialogue that starts with an assistant is excluded in full, because deleting that opening turn can
+   turn a contextual answer such as “还没有” into a misleading standalone user request.
 3. Maps original speakers to `user` and `assistant`, then creates one supervised sample for each assistant response.
 4. Removes high-confidence phone numbers, email addresses, ID cards, bank cards, and labeled order IDs.
 5. Deduplicates samples and assigns complete source conversations to stable 80/10/10 splits.
@@ -14,6 +16,27 @@ fine-tuning (SFT) data and trains an interpretable clarification baseline.
 
 The split is based on `source_id`, not on individual responses. Therefore different prefixes of the same
 conversation cannot appear in both training and evaluation data.
+
+## QLoRA preparation
+
+`export_llamafactory_data.py` removes provenance fields from the prepared records and writes the OpenAI
+message format plus `dataset_info.json` expected by LLaMA-Factory. The first training experiment is deliberately
+narrow: teach `Qwen/Qwen3-4B-Instruct-2507` to ask a concise clarification question when a shopping request is
+underspecified. It does not train order tools, refunds, platform policies, or general customer-service facts.
+
+On the Linux training machine, run the checked-in single-GPU configuration from this directory:
+
+```bash
+PYTHONPATH=. python scripts/export_llamafactory_data.py
+CUDA_VISIBLE_DEVICES=1 llamafactory-cli train configs/qwen3_4b_qlora_sft.yaml
+```
+
+Use the tagged `v0.9.4` LlamaFactory release for this first experiment. It supports Qwen3-2507 and keeps the
+training environment reproducible instead of following a moving `main` branch.
+
+The configuration pins the base-model revision and uses 4-bit NF4 QLoRA, FP16 computation, sequence length
+1024, batch size 1, and gradient accumulation 8. It targets the otherwise idle second RTX 2080 Ti; do not use
+both GPUs until a measured single-GPU limitation justifies distributed training.
 
 ## Run
 
@@ -24,6 +47,7 @@ cd ../knowledge-pipeline
 python scripts/prepare_public_knowledge.py
 cd ../model-pipeline
 python scripts/prepare_sft_data.py
+PYTHONPATH=. python scripts/export_llamafactory_data.py
 python scripts/prepare_nlu_data.py
 python scripts/train_nlu_baseline.py
 python scripts/evaluate_entity_baseline.py

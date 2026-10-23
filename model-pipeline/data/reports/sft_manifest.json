@@ -11,51 +11,52 @@
     "sample_unit": "one supervised sample per assistant response",
     "split_strategy": "sha256(source_id) bucket: train 0-79, dev 80-89, test 90-99",
     "deduplication": "sha256 of canonical redacted messages",
-    "pii_policy": "high-confidence regex pseudonymization before output"
+    "pii_policy": "high-confidence regex pseudonymization before output",
+    "leading_assistant_policy": "skip the complete source dialogue instead of removing its opening assistant turn"
   },
   "statistics": {
     "source_documents": 1073,
-    "candidate_samples": 4230,
-    "duplicates_removed": 97,
-    "output_samples": 4133,
+    "candidate_samples": 2505,
+    "duplicates_removed": 72,
+    "output_samples": 2433,
     "source_documents_by_split": {
       "train": 863,
       "dev": 99,
       "test": 111
     },
     "output_sources_by_split": {
-      "train": 852,
-      "dev": 98,
-      "test": 109
+      "train": 501,
+      "dev": 67,
+      "test": 73
     },
     "samples_by_split": {
-      "train": 3346,
-      "dev": 372,
-      "test": 415
+      "train": 1910,
+      "dev": 253,
+      "test": 270
     },
     "redactions": {},
     "parser_recoveries": {
       "missing_separator_lines": 4,
       "continuation_lines": 2,
       "unbalanced_quote_lines": 30,
-      "leading_assistant_turns_removed": 421
+      "leading_assistant_documents_skipped": 421
     }
   },
   "outputs": {
     "train": {
       "file": "train.jsonl",
-      "records": 3346,
-      "sha256": "3c369d7c053bd022bc07fd42b47307bd540ff6a2a40112c850ee4b0ed0ba7af4"
+      "records": 1910,
+      "sha256": "7b480f70afd6dae7c14088d47dc148adfd2dec7fd72789d1a35dc999d199a8ce"
     },
     "dev": {
       "file": "dev.jsonl",
-      "records": 372,
-      "sha256": "3dd47cc1c0492d135635528cf441bb6eeefe933b2399b2de39c9251eda16f386"
+      "records": 253,
+      "sha256": "026bfcee0922cb5e76ed3bd95b35c30e067143de2e3d4a3386ba4a3c996f8f92"
     },
     "test": {
       "file": "test.jsonl",
-      "records": 415,
-      "sha256": "01a0315998b9b790e71e90ba72b7727973ef6d657a66305e7bf22eada0d7f01e"
+      "records": 270,
+      "sha256": "b2562900b61474da5d95960fca8bb01880f9e13d2c0fc07af05f63a543db95c0"
     }
   }
 }

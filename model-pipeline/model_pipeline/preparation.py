@@ -50,7 +50,7 @@ class ParseDiagnostics:
     missing_separator_lines: int = 0
     continuation_lines: int = 0
     unbalanced_quote_lines: int = 0
-    leading_assistant_turns_removed: int = 0
+    leading_assistant_documents_skipped: int = 0
 
     def add(self, other: "ParseDiagnostics") -> None:
         for field_name in asdict(self):
@@ -155,11 +155,9 @@ def prepare_dataset(source_path: Path, output_dir: Path) -> dict[str, Any]:
             raise ValueError(f"{source_id}: {exc}") from exc
         diagnostics.add(document_diagnostics)
 
-        while messages and messages[0].role == "assistant":
-            messages.pop(0)
-            diagnostics.leading_assistant_turns_removed += 1
-        if not messages:
-            raise ValueError(f"{source_id}: dialogue contains no user message")
+        if messages[0].role == "assistant":
+            diagnostics.leading_assistant_documents_skipped += 1
+            continue
 
         redacted_messages: list[ChatMessage] = []
         for message in messages:
@@ -222,6 +220,9 @@ def prepare_dataset(source_path: Path, output_dir: Path) -> dict[str, Any]:
             "split_strategy": "sha256(source_id) bucket: train 0-79, dev 80-89, test 90-99",
             "deduplication": "sha256 of canonical redacted messages",
             "pii_policy": "high-confidence regex pseudonymization before output",
+            "leading_assistant_policy": (
+                "skip the complete source dialogue instead of removing its opening assistant turn"
+            ),
         },
         "statistics": {
             "source_documents": len(documents),
