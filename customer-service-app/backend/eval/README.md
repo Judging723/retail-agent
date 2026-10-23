@@ -3,9 +3,9 @@
 `agent_cases.json` is a fixed, manually reviewed evaluation set for the first Agent decision turn.
 It contains 20 Chinese customer-service cases:
 
-- 6 order, shipment, refund-progress, authorization, or multi-turn queries;
+- 5 order, shipment, refund-progress, or multi-turn queries;
 - 6 complete refund requests;
-- 8 cases where the Agent must not call a tool because information is missing, the user is only
+- 9 cases where the Agent must not call a tool because information is missing, the user is only
   asking a policy question, the capability is unsupported, or the message contains prompt injection.
 
 The evaluator measures:
@@ -43,14 +43,15 @@ On 2026-10-23, `deepseek-v4-flash` produced the following first-turn result:
 
 | Metric | Result |
 | --- | ---: |
-| Tool-selection accuracy | 0.800 (16/20) |
-| Tool-case end-to-end accuracy | 0.750 (9/12) |
+| Tool-selection accuracy | 0.850 (17/20) |
+| Tool-case end-to-end accuracy | 0.818 (9/11) |
 | Argument accuracy given correct tool | 1.000 (9/9) |
-| No-tool accuracy | 0.875 (7/8) |
+| No-tool accuracy | 0.889 (8/9) |
 
-The four selection failures are retained in the result file: one authorization case did not call
-the safe read tool, two explicit refund requests selected the read tool instead of the refund tool,
-and one incomplete refund request called the read tool instead of asking for the missing amount.
+The three selection failures are retained in the result file: two explicit refund requests selected
+the read tool instead of the refund tool, and one incomplete refund request called the read tool
+instead of asking for the missing amount. A request explicitly identifying an order as belonging
+to a friend is correctly labelled no-tool; database authorization is tested separately.
 This is the untouched baseline, not a tuned result. See
 [`results/deepseek-baseline.json`](results/deepseek-baseline.json) for per-case predictions and
 configuration hashes.

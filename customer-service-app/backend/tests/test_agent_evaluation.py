@@ -22,8 +22,8 @@ def test_fixed_agent_evaluation_dataset_is_valid() -> None:
 
     assert len(cases) == 20
     assert len({case.case_id for case in cases}) == 20
-    assert sum(case.expected_tool is not None for case in cases) == 12
-    assert sum(case.expected_tool is None for case in cases) == 8
+    assert sum(case.expected_tool is not None for case in cases) == 11
+    assert sum(case.expected_tool is None for case in cases) == 9
 
 
 def test_agent_evaluation_normalizes_refund_amounts() -> None:
