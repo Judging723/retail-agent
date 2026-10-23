@@ -84,3 +84,22 @@ regression set. This is an interpretable starting point, not a general named-ent
 It is not wired into the online Agent. DeepSeek Function Calling already produces tool arguments, and Pydantic
 validation remains the final authority. Adding a second online argument path would duplicate responsibility
 without improving the current flow.
+
+## Transformer sentiment fine-tuning
+
+Install the optional training dependencies and fine-tune the pinned three-layer Chinese RoBERTa model:
+
+```bash
+python -m pip install -e ".[dev,train]"
+python scripts/train_sentiment_transformer.py
+```
+
+The base model is `hfl/rbt3` at commit `0aa0527ff4170f29e1dfd3eb6ef60dc67e1bf75c`
+(Apache-2.0). The default run uses sequence length 192, batch size 16, two epochs, balanced cross-entropy,
+and automatically selects MPS, CUDA, or CPU. The generated weights remain under the ignored `artifacts/`
+directory; the reproducible configuration and evaluation metrics are committed as a JSON report.
+
+The recorded MPS run fine-tuned all 38.5 million parameters in about 163 seconds. On the fixed test split,
+accuracy is `0.833` and macro-F1 is `0.669`, compared with `0.782` and `0.569` for the TF-IDF baseline.
+Neutral-class F1 improved from `0.121` to `0.308` but remains the weakest class. These numbers still measure
+agreement with synthetic pseudo-labels, not accuracy on human-annotated customer-service conversations.

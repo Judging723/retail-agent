@@ -1,0 +1,173 @@
+{
+  "format_version": 1,
+  "task": "three-class Chinese customer-message sentiment fine-tuning",
+  "metric_scope": "Agreement with source-model pseudo-labels on synthetic dialogue; not real-business accuracy or human-label accuracy.",
+  "base_model": {
+    "name": "hfl/rbt3",
+    "revision": "0aa0527ff4170f29e1dfd3eb6ef60dc67e1bf75c",
+    "license": "Apache-2.0",
+    "architecture": "3-layer Chinese RoBERTa"
+  },
+  "input": {
+    "train": {
+      "file": "train.jsonl",
+      "records": 2664,
+      "sha256": "f7a083daa9bf3d93f89e43284914c3929a69a16370978a26ef457389666643cf"
+    },
+    "dev": {
+      "file": "dev.jsonl",
+      "records": 228,
+      "sha256": "ca146c35d61713c9da394ee6113b48276cda3f8d0f70ff38a40b67944a3c8d58"
+    },
+    "test": {
+      "file": "test.jsonl",
+      "records": 372,
+      "sha256": "1f236ec2d473eff259562b78bf1cf15f28bfb882628958faf6ea76af502db553"
+    }
+  },
+  "training": {
+    "epochs": 2,
+    "batch_size": 16,
+    "max_length": 192,
+    "learning_rate": 2e-05,
+    "optimizer": "AdamW",
+    "class_weight": "balanced",
+    "gradient_clip_norm": 1.0,
+    "seed": 42,
+    "device": "mps",
+    "parameter_count": 38479107,
+    "trainable_parameter_count": 38479107,
+    "elapsed_seconds": 163.363,
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.911653,
+        "dev_loss": 0.571435,
+        "dev_accuracy": 0.811404,
+        "dev_macro_f1": 0.654905
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.627859,
+        "dev_loss": 0.578043,
+        "dev_accuracy": 0.864035,
+        "dev_macro_f1": 0.661739
+      }
+    ]
+  },
+  "results": {
+    "dev": {
+      "loss": 0.578043,
+      "metrics": {
+        "accuracy": 0.864035,
+        "macro_f1": 0.661739,
+        "per_class": {
+          "negative": {
+            "precision": 0.935897,
+            "recall": 0.83908,
+            "f1": 0.884848,
+            "support": 87
+          },
+          "neutral": {
+            "precision": 0.285714,
+            "recall": 0.153846,
+            "f1": 0.2,
+            "support": 13
+          },
+          "positive": {
+            "precision": 0.853147,
+            "recall": 0.953125,
+            "f1": 0.900369,
+            "support": 128
+          }
+        },
+        "confusion_matrix": [
+          [
+            73,
+            2,
+            12
+          ],
+          [
+            2,
+            2,
+            9
+          ],
+          [
+            3,
+            3,
+            122
+          ]
+        ],
+        "label_order": [
+          "negative",
+          "neutral",
+          "positive"
+        ]
+      }
+    },
+    "test": {
+      "loss": 0.588371,
+      "metrics": {
+        "accuracy": 0.833333,
+        "macro_f1": 0.668915,
+        "per_class": {
+          "negative": {
+            "precision": 0.789062,
+            "recall": 0.821138,
+            "f1": 0.804781,
+            "support": 123
+          },
+          "neutral": {
+            "precision": 0.375,
+            "recall": 0.26087,
+            "f1": 0.307692,
+            "support": 23
+          },
+          "positive": {
+            "precision": 0.890351,
+            "recall": 0.89823,
+            "f1": 0.894273,
+            "support": 226
+          }
+        },
+        "confusion_matrix": [
+          [
+            101,
+            4,
+            18
+          ],
+          [
+            10,
+            6,
+            7
+          ],
+          [
+            17,
+            6,
+            203
+          ]
+        ],
+        "label_order": [
+          "negative",
+          "neutral",
+          "positive"
+        ]
+      }
+    }
+  },
+  "artifact": {
+    "directory": "rbt3",
+    "files": [
+      "config.json",
+      "model.safetensors",
+      "tokenizer.json",
+      "tokenizer_config.json"
+    ],
+    "warning": "Only load model artifacts produced by a trusted local pipeline."
+  },
+  "environment": {
+    "python": "3.12.15",
+    "torch": "2.14.1",
+    "transformers": "5.20.2"
+  }
+}

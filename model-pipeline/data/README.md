@@ -18,5 +18,9 @@ provenance, and metrics.
 committed as `reports/entity_baseline.json`; a perfect score on these cases is only a regression check, not a
 claim about general Chinese entity recognition.
 
+`reports/sentiment_transformer.json` records the pinned `hfl/rbt3` revision, full fine-tuning parameters,
+environment, epoch history, and fixed development/test metrics. The approximately 147 MB trained checkpoint
+is reproducible but remains under the ignored `artifacts/` directory rather than Git.
+
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.
