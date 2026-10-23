@@ -1,7 +1,7 @@
 # Model pipeline
 
 This directory is the offline model-engineering boundary. It currently prepares reproducible supervised
-fine-tuning (SFT) data and trains interpretable clarification and sentiment baselines.
+fine-tuning (SFT) data and trains an interpretable clarification baseline.
 
 ## What the preparation step does
 
@@ -26,8 +26,6 @@ cd ../model-pipeline
 python scripts/prepare_sft_data.py
 python scripts/prepare_nlu_data.py
 python scripts/train_nlu_baseline.py
-python scripts/prepare_sentiment_data.py
-python scripts/train_sentiment_baseline.py
 python scripts/evaluate_entity_baseline.py
 pytest -v
 ruff check .
@@ -59,22 +57,6 @@ Character n-grams are a useful Chinese baseline because they require neither a t
 neural model. The classifier is still a statistical baseline, not the final Transformer model. Its purpose is
 to prove that the dataset, metrics, split, and artifact lifecycle work before expensive training is introduced.
 
-Sentiment training is intentionally not derived from this dataset: shopping-clarification strategy codes are
-not sentiment labels.
-
-## Sentiment baseline
-
-The sentiment stage uses the Chinese customer turns from
-[Kapibala Sales Dialogues](https://huggingface.co/datasets/kapibala-ai/kapibala-sales-dialogues),
-pinned to a commit and raw-file checksums. The dataset is CC BY 4.0 and fully synthetic. Exact duplicate
-messages are removed, and all variants of the same `setting_id` stay in one split so the test set cannot be
-solved by memorizing another experimental version of the same sales scenario.
-
-Each label is the largest of the published `p_negative`, `p_neutral`, and `p_positive` probabilities. These
-probabilities were produced by another multilingual sentiment model. They are pseudo-labels rather than human
-gold annotations, so the reported metrics measure teacher-label agreement on synthetic dialogues. The stage
-compares a majority baseline, a transparent lexicon rule, and character TF-IDF with logistic regression.
-
 ## Entity baseline
 
 The entity baseline deliberately covers only the arguments used by the current order tools: `order_no`,
@@ -84,35 +66,3 @@ regression set. This is an interpretable starting point, not a general named-ent
 It is not wired into the online Agent. DeepSeek Function Calling already produces tool arguments, and Pydantic
 validation remains the final authority. Adding a second online argument path would duplicate responsibility
 without improving the current flow.
-
-## Transformer sentiment fine-tuning
-
-Install the optional training dependencies and fine-tune the pinned three-layer Chinese RoBERTa model:
-
-```bash
-python -m pip install -e ".[dev,train]"
-python scripts/train_sentiment_transformer.py
-```
-
-The base model is `hfl/rbt3` at commit `0aa0527ff4170f29e1dfd3eb6ef60dc67e1bf75c`
-(Apache-2.0). The default run uses sequence length 192, batch size 16, two epochs, balanced cross-entropy,
-and automatically selects MPS, CUDA, or CPU. The generated weights remain under the ignored `artifacts/`
-directory; the reproducible configuration and evaluation metrics are committed as a JSON report.
-
-The recorded MPS run fine-tuned all 38.5 million parameters in about 163 seconds. On the fixed test split,
-accuracy is `0.833` and macro-F1 is `0.669`, compared with `0.782` and `0.569` for the TF-IDF baseline.
-Neutral-class F1 improved from `0.121` to `0.308` but remains the weakest class. These numbers still measure
-agreement with synthetic pseudo-labels, not accuracy on human-annotated customer-service conversations.
-
-Run one local prediction after training:
-
-```bash
-python scripts/predict_sentiment.py "商品已经坏了，我非常生气，要求马上处理。"
-```
-
-The CLI loads only the local checkpoint and returns the three probabilities, predicted sentiment, and a
-customer-attention hint. `risk_level` is a transparent heuristic: `high` requires both a negative prediction
-and an explicit escalation phrase such as “投诉” or “生气”; `medium` covers another negative prediction or
-negative probability `>= 0.40`. It is not a separately trained or calibrated risk model. The predictor is
-intentionally not embedded in FastAPI yet, so the online service does not carry an always-loaded 147 MB
-classifier before a real consumer is defined.

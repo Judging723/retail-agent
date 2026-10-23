@@ -17,18 +17,6 @@
       "rag_example_library_use": "approved_for_clarification_examples_only"
     },
     {
-      "id": "kapibala_sales_dialogues",
-      "name": "Kapibala Sales Dialogues",
-      "source_url": "https://huggingface.co/datasets/kapibala-ai/kapibala-sales-dialogues",
-      "license": "CC-BY-4.0",
-      "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "access": "direct",
-      "review_status": "approved_with_attribution",
-      "tasks": ["sentiment_classification", "customer_intent", "sales_dialogue_analysis"],
-      "recommended_use": "Use Chinese customer messages for a synthetic, model-pseudo-labeled sentiment baseline; do not describe it as real customer data or human gold labels.",
-      "rag_knowledge_base_candidate": false
-    },
-    {
       "id": "crosswoz",
       "name": "CrossWOZ",
       "source_url": "https://github.com/thu-coai/CrossWOZ",
@@ -98,18 +86,6 @@
       "review_status": "license_review_required",
       "tasks": ["customer_service_dialogue_summarization"],
       "recommended_use": "Potential summarization benchmark; verify authorization before downloading or redistributing.",
-      "rag_knowledge_base_candidate": false
-    },
-    {
-      "id": "fewclue_eprstmt",
-      "name": "FewCLUE EPRSTMT",
-      "source_url": "https://github.com/CLUEbenchmark/FewCLUE",
-      "license": null,
-      "license_url": null,
-      "access": "repository_download",
-      "review_status": "license_review_required",
-      "tasks": ["ecommerce_review_sentiment"],
-      "recommended_use": "Potential few-shot sentiment baseline; verify the dataset license first.",
       "rag_knowledge_base_candidate": false
     },
     {

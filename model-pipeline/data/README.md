@@ -9,18 +9,9 @@ rules, parser recoveries, split sizes, redaction counts, and output checksums.
 The NLU stage adds `reports/nlu_dataset_manifest.json` for weak-label provenance and
 `reports/nlu_baseline.json` for fixed development/test metrics. Trained `.joblib` artifacts stay outside Git.
 
-The sentiment stage adds `reports/sentiment_dataset_manifest.json` and
-`reports/sentiment_baseline.json`. Its downloaded CC BY 4.0 raw files, processed JSONL files, and trained
-artifact stay outside Git; the committed reports retain the exact revision, checksums, split policy, label
-provenance, and metrics.
-
 `entity_cases.json` is a small hand-written regression set for the current order-tool fields. Its report is
 committed as `reports/entity_baseline.json`; a perfect score on these cases is only a regression check, not a
 claim about general Chinese entity recognition.
-
-`reports/sentiment_transformer.json` records the pinned `hfl/rbt3` revision, full fine-tuning parameters,
-environment, epoch history, and fixed development/test metrics. The approximately 147 MB trained checkpoint
-is reproducible but remains under the ignored `artifacts/` directory rather than Git.
 
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.

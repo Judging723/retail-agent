@@ -4,7 +4,7 @@
 
 ## 先区分两类数据
 
-公开对话、意图和情感数据集适合训练模型或建立评测集，但不等于知识库。知识库中的
+公开对话和意图数据集适合训练模型或建立评测集，但不等于知识库。知识库中的
 退款期限、物流规则、赔付条件必须来自可追溯且有权使用的业务文档。当前项目继续使用
 Chinese Ambiguous Reference 构建“购物澄清案例库”，用于检索相似案例和设计追问；它不用于
 回答退款、物流、赔付等平台规则问题。
@@ -14,14 +14,12 @@ Chinese Ambiguous Reference 构建“购物澄清案例库”，用于检索相�
 | 数据集 | 适合任务 | 许可/访问 | 当前决定 |
 | --- | --- | --- | --- |
 | [Chinese Ambiguous Reference](https://github.com/ygan/Chinese-Ambiguous-Reference) | 购物咨询歧义检测、澄清策略 | MIT；可直接访问 | 第一批实验数据 |
-| [Kapibala Sales Dialogues](https://huggingface.co/datasets/kapibala-ai/kapibala-sales-dialogues) | 中文顾客消息情感分类 | CC BY 4.0；需署名 | 合成语料、模型弱标签，用于情感训练闭环基线 |
 | [CrossWOZ](https://github.com/thu-coai/CrossWOZ) | 意图、槽位、对话状态 | Apache-2.0；可直接访问 | 用于学习 NLU 格式和迁移基线，不冒充电商数据 |
 | [MASSIVE](https://github.com/alexa/massive) | 中文意图分类、槽位抽取 | CC BY 4.0；需要署名 | 可作为通用 NLU 基线 |
 | [Amazon ESCI](https://github.com/amazon-science/esci-data) | 查询与商品相关性、Reranker | Apache-2.0；可直接访问 | 可选的相关性学习数据，中文客服相关性较弱 |
 | [JDDC 2.1](https://github.com/hrlinlp/jddc2.1) | 客服生成、改写、总结、多模态 | 需要机构邮箱申请 | 获批并复核条款后再使用 |
 | [E-commerce Dialogue Corpus](https://github.com/cooelf/DeepUtteranceAggregation) | 多轮回复选择 | 仓库未提供清晰许可证 | 暂不下载、训练或再分发 |
 | [CSDS](https://github.com/xiaolinAndy/CSDS) | 客服对话总结 | 仓库未提供清晰许可证 | 暂不下载、训练或再分发 |
-| [FewCLUE EPRSTMT](https://github.com/CLUEbenchmark/FewCLUE) | 电商评论情感分类 | 数据许可仍需确认 | 确认许可后再作为小样本基线 |
 | [SMP ECDT 镜像](https://github.com/hml-ubt/SMP2017-2019-ECDT-data) | 意图和领域分类 | 第三方镜像，许可不清晰 | 优先寻找官方来源，当前不使用 |
 
 机器可读的决策记录位于
@@ -57,15 +55,3 @@ SIGDIAL 论文确认核心策略包括 CQ、LIST、LCQ、IG 和 IAR，但没有�
 
 CrossWOZ 和 MASSIVE 留作后续细粒度意图/槽位实验；ESCI 留作扩展 Reranker 实验；需要申请或许可不清晰的
 数据集不进入当前开发路径。
-
-## 情感分类实施数据
-
-Kapibala Sales Dialogues 固定到 commit
-`c94eb4fbc32d6f73f15bdb3dfc84600afd809844`。当前流水线只选择中文顾客消息，并以发布的
-`p_negative`、`p_neutral`、`p_positive` 最大概率生成三分类标签；完全相同的消息会去重，同一
-`setting_id` 的不同实验分支只进入同一个数据划分。
-
-这个选择解决了“来源和许可证可核验”的问题，但不等于获得了真实人工金标：对话是合成的，情感概率
-也由 `lxyuan/distilbert-base-multilingual-cased-sentiments-student` 生成。因此实验结果只能表述为
-“在合成对话上复现教师伪标签”，不能宣传为真实客服情绪识别准确率。后续接入经过授权和人工复核的
-业务样本时，应建立独立测试集重新评测。
