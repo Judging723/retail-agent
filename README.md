@@ -15,6 +15,7 @@
 - 通过 DeepSeek Function Calling 查询当前客户的订单与物流，并记录工具审计日志
 - 在数据库查询中强制绑定当前会话客户，阻止跨客户读取订单
 - 通过退款工具创建 `requested` 申请，并校验订单状态、可退金额和幂等键
+- 使用 20 条固定 Agent 用例评测工具选择、参数提取和不调用工具的克制能力
 - 为请求生成或透传 Request ID，并记录请求状态与耗时
 - 对未处理异常返回不泄露内部信息的统一错误响应
 - 使用少量自动化测试验证核心流程
@@ -158,6 +159,8 @@ customer-service-app/
 │   │   ├── schemas/      # 请求和响应结构
 │   │   └── services/     # 聊天业务流程
 │   ├── migrations/       # Alembic 数据库迁移
+│   ├── eval/             # 固定 Agent 评测集、实验说明和版本化结果
+│   ├── scripts/          # 数据库检查与 Agent 评测入口
 │   └── tests/            # 核心行为测试
 └── frontend/              # Vue 3 + Vite 聊天页面
 knowledge-pipeline/
@@ -253,6 +256,21 @@ Vue 为每次发送生成 `Idempotency-Key`，同一条失败消息重试时复�
 `tool` 消息返回；第二轮由模型把结果组织成客服回复。每次执行都会写入 `tool_audit_logs`，记录工具名、
 参数、成功或拒绝状态及错误码。聊天记录仍只保存最终的用户消息和助手回复。
 
+## Agent 评测
+
+固定评测集包含 20 条中文用例，覆盖订单查询、完整退款、多轮补充信息、不完整请求和提示词注入。
+`deepseek-v4-flash` 的首轮基线为：工具选择准确率 `0.800`，工具及参数端到端准确率 `0.750`，
+选对工具后的参数准确率 `1.000`，不调用工具准确率 `0.875`。这些数字只描述当前小型教育性测试集。
+
+```bash
+cd customer-service-app/backend
+python scripts/evaluate_agent.py --validate-only
+python scripts/evaluate_agent.py --output eval/results/deepseek-baseline.json
+```
+
+测试集、逐例结果、失败分析和配置指纹见
+[Agent 评测说明](customer-service-app/backend/eval/README.md)。
+
 ## 后续路线
 
 每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
@@ -261,7 +279,7 @@ Vue 为每次发送生成 `Idempotency-Key`，同一条失败消息重试时复�
 2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
 3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
-5. 离线评测与训练数据治理
+5. Agent 离线评测基线（已完成）；训练数据治理（下一步）
 6. 独立的微调、量化与模型部署
 
 详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。
