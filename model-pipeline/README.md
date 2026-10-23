@@ -28,6 +28,7 @@ python scripts/prepare_nlu_data.py
 python scripts/train_nlu_baseline.py
 python scripts/prepare_sentiment_data.py
 python scripts/train_sentiment_baseline.py
+python scripts/evaluate_entity_baseline.py
 pytest -v
 ruff check .
 ```
@@ -73,3 +74,13 @@ Each label is the largest of the published `p_negative`, `p_neutral`, and `p_pos
 probabilities were produced by another multilingual sentiment model. They are pseudo-labels rather than human
 gold annotations, so the reported metrics measure teacher-label agreement on synthetic dialogues. The stage
 compares a majority baseline, a transparent lexicon rule, and character TF-IDF with logistic regression.
+
+## Entity baseline
+
+The entity baseline deliberately covers only the arguments used by the current order tools: `order_no`,
+`amount`, and an explicitly phrased refund `reason`. It uses regular expressions and a 13-case hand-written
+regression set. This is an interpretable starting point, not a general named-entity recognition model.
+
+It is not wired into the online Agent. DeepSeek Function Calling already produces tool arguments, and Pydantic
+validation remains the final authority. Adding a second online argument path would duplicate responsibility
+without improving the current flow.

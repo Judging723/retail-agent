@@ -1,0 +1,184 @@
+{
+  "format_version": 1,
+  "task": "rule-based extraction for current order-tool arguments",
+  "entities": [
+    "order_no",
+    "amount",
+    "reason"
+  ],
+  "cases": 13,
+  "exact_match_accuracy": 1.0,
+  "micro": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tp": 19,
+    "fp": 0,
+    "fn": 0
+  },
+  "per_entity": {
+    "order_no": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 10,
+      "fp": 0,
+      "fn": 0
+    },
+    "amount": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0
+    },
+    "reason": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0
+    }
+  },
+  "predictions": [
+    {
+      "case_id": "order_hyphen",
+      "expected": {
+        "order_no": "ORDER-10001"
+      },
+      "predicted": {
+        "order_no": "ORDER-10001"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "order_underscore",
+      "expected": {
+        "order_no": "CN_2026_001"
+      },
+      "predicted": {
+        "order_no": "CN_2026_001"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "numeric_order_with_context",
+      "expected": {
+        "order_no": "202610230001"
+      },
+      "predicted": {
+        "order_no": "202610230001"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_full",
+      "expected": {
+        "order_no": "ORDER-20001",
+        "amount": "99.00",
+        "reason": "商品破损"
+      },
+      "predicted": {
+        "order_no": "ORDER-20001",
+        "amount": "99.00",
+        "reason": "商品破损"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_integer_amount",
+      "expected": {
+        "order_no": "ORDER-20002",
+        "amount": "25.00",
+        "reason": "少发商品"
+      },
+      "predicted": {
+        "order_no": "ORDER-20002",
+        "amount": "25.00",
+        "reason": "少发商品"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_currency_prefix",
+      "expected": {
+        "order_no": "ORDER-20003",
+        "amount": "18.50",
+        "reason": "包装严重挤压"
+      },
+      "predicted": {
+        "order_no": "ORDER-20003",
+        "amount": "18.50",
+        "reason": "包装严重挤压"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_reason_without_marker",
+      "expected": {
+        "order_no": "ORDER-20004",
+        "amount": "120.00",
+        "reason": "商品与描述不符"
+      },
+      "predicted": {
+        "order_no": "ORDER-20004",
+        "amount": "120.00",
+        "reason": "商品与描述不符"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_missing_amount",
+      "expected": {
+        "order_no": "ORDER-30001"
+      },
+      "predicted": {
+        "order_no": "ORDER-30001"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "refund_missing_reason",
+      "expected": {
+        "order_no": "ORDER-30002",
+        "amount": "30.00"
+      },
+      "predicted": {
+        "order_no": "ORDER-30002",
+        "amount": "30.00"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "foreign_order_still_an_entity",
+      "expected": {
+        "order_no": "ORDER-OTHER-01"
+      },
+      "predicted": {
+        "order_no": "ORDER-OTHER-01"
+      },
+      "exact_match": true
+    },
+    {
+      "case_id": "date_is_not_order_number",
+      "expected": {},
+      "predicted": {},
+      "exact_match": true
+    },
+    {
+      "case_id": "phone_is_not_order_number",
+      "expected": {},
+      "predicted": {},
+      "exact_match": true
+    },
+    {
+      "case_id": "no_entity",
+      "expected": {},
+      "predicted": {},
+      "exact_match": true
+    }
+  ],
+  "limitations": "The cases are a small hand-written regression set. The extractor supports one order number, one amount, and an explicitly phrased refund reason; online Pydantic validation remains the authority for tool arguments."
+}

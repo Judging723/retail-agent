@@ -14,5 +14,9 @@ The sentiment stage adds `reports/sentiment_dataset_manifest.json` and
 artifact stay outside Git; the committed reports retain the exact revision, checksums, split policy, label
 provenance, and metrics.
 
+`entity_cases.json` is a small hand-written regression set for the current order-tool fields. Its report is
+committed as `reports/entity_baseline.json`; a perfect score on these cases is only a regression check, not a
+claim about general Chinese entity recognition.
+
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.
