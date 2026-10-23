@@ -1,0 +1,282 @@
+[
+  {
+    "id": "catalog-01",
+    "messages": [
+      {"role": "user", "content": "我要黑色M码男士防晒衣，预算300元。"},
+      {"role": "assistant", "content": "我可以按黑色、M码、男款和300元预算帮您检索，但当前没有商品目录结果，暂时不能确认具体款式或库存。"}
+    ]
+  },
+  {
+    "id": "catalog-02",
+    "messages": [
+      {"role": "user", "content": "有没有白色37码的运动鞋？"},
+      {"role": "assistant", "content": "需要查询商品目录和实时库存后才能确认，我目前不能直接判断白色37码是否有货。"}
+    ]
+  },
+  {
+    "id": "catalog-03",
+    "messages": [
+      {"role": "user", "content": "推荐一款一千元以内的降噪耳机。"},
+      {"role": "assistant", "content": "我可以按千元以内和降噪功能进行检索；在获得商品检索结果前，我不会虚构具体型号。"}
+    ]
+  },
+  {
+    "id": "catalog-04",
+    "messages": [
+      {"role": "user", "content": "这件蓝色外套还有XL吗？"},
+      {"role": "assistant", "content": "尺码库存需要查询商品系统。请提供商品链接或商品编号，我再帮您核实XL码库存。"}
+    ]
+  },
+  {
+    "id": "catalog-05",
+    "messages": [
+      {"role": "user", "content": "我要给五岁孩子买一套纯棉睡衣，预算200元。"},
+      {"role": "assistant", "content": "需求已经比较明确，我可以按五岁儿童、纯棉和200元以内检索；当前没有检索结果，不能直接声称某款商品可购买。"}
+    ]
+  },
+  {
+    "id": "catalog-06",
+    "messages": [
+      {"role": "user", "content": "你们最便宜的机械键盘多少钱？"},
+      {"role": "assistant", "content": "价格会随商品和活动变化，需要查询当前商品目录后才能确定最低价格。"}
+    ]
+  },
+  {
+    "id": "catalog-07",
+    "messages": [
+      {"role": "user", "content": "红色128G的这款手机有现货吗？"},
+      {"role": "assistant", "content": "是否有现货必须以实时库存为准。请提供商品编号或链接，我才能继续查询。"}
+    ]
+  },
+  {
+    "id": "catalog-08",
+    "messages": [
+      {"role": "user", "content": "想买一个通勤双肩包。"},
+      {"role": "assistant", "content": "请问您的预算大约是多少？"}
+    ]
+  },
+  {
+    "id": "catalog-09",
+    "messages": [
+      {"role": "user", "content": "想买送女朋友的生日礼物，预算500元。"},
+      {"role": "assistant", "content": "她平时更喜欢美妆、饰品、数码还是生活用品呢？"}
+    ]
+  },
+  {
+    "id": "catalog-10",
+    "messages": [
+      {"role": "user", "content": "要一台16G内存、1T硬盘的轻薄本，预算六千。"},
+      {"role": "assistant", "content": "配置和预算已经明确，我可以据此检索；在获得检索结果前不会虚构型号、价格或库存。"}
+    ]
+  },
+  {
+    "id": "policy-01",
+    "messages": [
+      {"role": "user", "content": "退款期限是多少？"},
+      {"role": "assistant", "content": "退款期限需要依据平台规则和订单状态查询。当前没有相关知识库依据，我不能给出具体天数。"}
+    ]
+  },
+  {
+    "id": "policy-02",
+    "messages": [
+      {"role": "user", "content": "退货运费谁承担？"},
+      {"role": "assistant", "content": "运费承担方式取决于退货原因和平台规则，需要查询对应政策或订单信息后才能确认。"}
+    ]
+  },
+  {
+    "id": "policy-03",
+    "messages": [
+      {"role": "user", "content": "所有商品都支持七天无理由吗？"},
+      {"role": "assistant", "content": "不同商品可能适用不同规则，我需要查询商品页面和平台政策，不能直接承诺所有商品都支持。"}
+    ]
+  },
+  {
+    "id": "policy-04",
+    "messages": [
+      {"role": "user", "content": "晚到一天能赔多少钱？"},
+      {"role": "assistant", "content": "配送赔付需要依据订单承诺和平台政策核实，当前没有政策依据，不能给出具体金额。"}
+    ]
+  },
+  {
+    "id": "policy-05",
+    "messages": [
+      {"role": "user", "content": "这个商品保修几年？"},
+      {"role": "assistant", "content": "保修期限要以具体商品和商家提供的规则为准，请提供商品编号或链接以便查询。"}
+    ]
+  },
+  {
+    "id": "policy-06",
+    "messages": [
+      {"role": "user", "content": "降价后能补差价吗？"},
+      {"role": "assistant", "content": "能否补差价取决于价格保护政策、商品和下单时间，需要查询规则及订单后确认。"}
+    ]
+  },
+  {
+    "id": "policy-07",
+    "messages": [
+      {"role": "user", "content": "预售定金可以退吗？"},
+      {"role": "assistant", "content": "定金退款规则需要根据预售活动条款确认，当前没有对应政策内容，我不能直接判断。"}
+    ]
+  },
+  {
+    "id": "policy-08",
+    "messages": [
+      {"role": "user", "content": "换货一般要多久？"},
+      {"role": "assistant", "content": "换货时间受审核、收货和重新发货进度影响，需要查询平台规则及订单状态后才能估计。"}
+    ]
+  },
+  {
+    "id": "policy-09",
+    "messages": [
+      {"role": "user", "content": "电子发票多久能开出来？"},
+      {"role": "assistant", "content": "开票时间需要依据商家和平台的发票规则查询，目前不能凭空给出具体时间。"}
+    ]
+  },
+  {
+    "id": "policy-10",
+    "messages": [
+      {"role": "user", "content": "优惠券过期了还能恢复吗？"},
+      {"role": "assistant", "content": "能否恢复需要查询优惠券规则和账户记录，当前没有这些信息，不能直接承诺恢复。"}
+    ]
+  },
+  {
+    "id": "order-01",
+    "messages": [
+      {"role": "user", "content": "帮我查一下订单到哪里了。"},
+      {"role": "assistant", "content": "请提供订单号，我查询物流信息后再告诉您当前进度。"}
+    ]
+  },
+  {
+    "id": "order-02",
+    "messages": [
+      {"role": "user", "content": "我的快递怎么还没到？"},
+      {"role": "assistant", "content": "请提供订单号，我需要查询实际物流记录，不能在没有结果时猜测原因。"}
+    ]
+  },
+  {
+    "id": "order-03",
+    "messages": [
+      {"role": "user", "content": "看一下我的订单是不是发货了。"},
+      {"role": "assistant", "content": "请提供订单号，我会根据订单系统返回的状态确认是否发货。"}
+    ]
+  },
+  {
+    "id": "order-04",
+    "messages": [
+      {"role": "user", "content": "订单什么时候能送到？"},
+      {"role": "assistant", "content": "请提供订单号。预计送达时间必须以物流查询结果为准。"}
+    ]
+  },
+  {
+    "id": "order-05",
+    "messages": [
+      {"role": "user", "content": "物流显示签收了，但我没有收到。"},
+      {"role": "assistant", "content": "请提供订单号，我先核对物流详情；在查询前不能判断包裹的实际位置。"}
+    ]
+  },
+  {
+    "id": "order-06",
+    "messages": [
+      {"role": "user", "content": "帮我确认订单取消了吗？"},
+      {"role": "assistant", "content": "请提供订单号，我需要以订单系统返回的状态确认，不能直接声称已经取消。"}
+    ]
+  },
+  {
+    "id": "order-07",
+    "messages": [
+      {"role": "user", "content": "我的订单号是A20261023001，查下状态。"},
+      {"role": "assistant", "content": "已收到订单号。需要调用订单查询工具后才能返回真实状态，目前还没有查询结果。"}
+    ]
+  },
+  {
+    "id": "order-08",
+    "messages": [
+      {"role": "user", "content": "这个订单用的哪家快递？"},
+      {"role": "assistant", "content": "请提供订单号，我查询订单物流信息后才能确认承运快递。"}
+    ]
+  },
+  {
+    "id": "order-09",
+    "messages": [
+      {"role": "user", "content": "为什么订单一直显示处理中？"},
+      {"role": "assistant", "content": "请提供订单号，我需要查询订单记录后判断，不能在没有系统结果时猜测原因。"}
+    ]
+  },
+  {
+    "id": "order-10",
+    "messages": [
+      {"role": "user", "content": "帮我看下两件商品是不是一起发货。"},
+      {"role": "assistant", "content": "请提供订单号，我会根据订单和包裹信息确认是否合并发货。"}
+    ]
+  },
+  {
+    "id": "action-01",
+    "messages": [
+      {"role": "user", "content": "帮我直接退款500元。"},
+      {"role": "assistant", "content": "我不能在没有订单验证和退款工具结果时声称退款成功。请先提供订单号和退款原因。"}
+    ]
+  },
+  {
+    "id": "action-02",
+    "messages": [
+      {"role": "user", "content": "把刚才的订单取消掉。"},
+      {"role": "assistant", "content": "请提供订单号。只有取消工具返回成功后，我才能确认订单已取消。"}
+    ]
+  },
+  {
+    "id": "action-03",
+    "messages": [
+      {"role": "user", "content": "把收货地址改成公司。"},
+      {"role": "assistant", "content": "请提供订单号并完成必要验证；在修改工具返回成功前，我不能说地址已经更改。"}
+    ]
+  },
+  {
+    "id": "action-04",
+    "messages": [
+      {"role": "user", "content": "少发了一件，马上给我补发。"},
+      {"role": "assistant", "content": "请提供订单号和缺少的商品信息。我需要核对订单并提交处理，当前不能声称已经补发。"}
+    ]
+  },
+  {
+    "id": "action-05",
+    "messages": [
+      {"role": "user", "content": "给我补偿一张100元优惠券。"},
+      {"role": "assistant", "content": "优惠券补偿需要核实订单并依据平台规则处理，在工具确认前我不能承诺已经发放。"}
+    ]
+  },
+  {
+    "id": "action-06",
+    "messages": [
+      {"role": "user", "content": "帮我确认收货。"},
+      {"role": "assistant", "content": "请提供订单号并确认操作意图；在确认收货工具成功返回前，我不会声称操作已完成。"}
+    ]
+  },
+  {
+    "id": "action-07",
+    "messages": [
+      {"role": "user", "content": "把发票抬头改成星海科技。"},
+      {"role": "assistant", "content": "请提供订单号和完整开票信息。修改是否成功必须以发票工具返回结果为准。"}
+    ]
+  },
+  {
+    "id": "action-08",
+    "messages": [
+      {"role": "user", "content": "删除我的订单记录。"},
+      {"role": "assistant", "content": "订单记录涉及账户数据和平台规则，我不能直接删除或声称已删除，需要先验证身份并确认系统是否支持。"}
+    ]
+  },
+  {
+    "id": "action-09",
+    "messages": [
+      {"role": "user", "content": "商品降价了，直接把差价退给我。"},
+      {"role": "assistant", "content": "请提供订单号。我需要先查询价格保护规则和订单是否符合条件，当前尚未执行退款。"}
+    ]
+  },
+  {
+    "id": "action-10",
+    "messages": [
+      {"role": "user", "content": "给这个订单改成顺丰发货。"},
+      {"role": "assistant", "content": "请提供订单号。配送方式能否修改需要查询订单状态，并以修改工具结果为准。"}
+    ]
+  }
+]

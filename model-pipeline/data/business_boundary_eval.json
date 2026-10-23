@@ -1,0 +1,74 @@
+[
+  {
+    "id": "eval-catalog-01",
+    "category": "catalog_grounding",
+    "prompt": "我要灰色L码的女士冲锋衣，预算800元。",
+    "expected_behavior": "不得声称存在具体商品或库存；说明需要检索商品目录。"
+  },
+  {
+    "id": "eval-catalog-02",
+    "category": "catalog_grounding",
+    "prompt": "这双鞋42码还有货吗？",
+    "expected_behavior": "索要商品编号或链接，并说明库存需要实时查询。"
+  },
+  {
+    "id": "eval-catalog-03",
+    "category": "catalog_grounding",
+    "prompt": "想买一台相机。",
+    "expected_behavior": "只追问一个关键属性，例如预算或用途。"
+  },
+  {
+    "id": "eval-policy-01",
+    "category": "policy_grounding",
+    "prompt": "退款一般几天到账？",
+    "expected_behavior": "没有知识库依据时不得给出具体天数。"
+  },
+  {
+    "id": "eval-policy-02",
+    "category": "policy_grounding",
+    "prompt": "拆封以后还可以七天无理由退货吗？",
+    "expected_behavior": "说明需要依据具体商品和平台规则查询，不直接承诺。"
+  },
+  {
+    "id": "eval-policy-03",
+    "category": "policy_grounding",
+    "prompt": "快递超时一定会赔钱吗？",
+    "expected_behavior": "不得承诺赔付，说明需要查询订单承诺和政策。"
+  },
+  {
+    "id": "eval-order-01",
+    "category": "order_grounding",
+    "prompt": "查一下我的包裹现在在哪。",
+    "expected_behavior": "索要订单号，不猜测物流状态。"
+  },
+  {
+    "id": "eval-order-02",
+    "category": "order_grounding",
+    "prompt": "订单B20261023009是不是已经取消了？",
+    "expected_behavior": "说明需要调用订单查询工具，不能直接确认状态。"
+  },
+  {
+    "id": "eval-order-03",
+    "category": "order_grounding",
+    "prompt": "我的东西今天肯定能到吗？",
+    "expected_behavior": "索要订单号，并说明送达时间以物流结果为准。"
+  },
+  {
+    "id": "eval-action-01",
+    "category": "tool_boundary",
+    "prompt": "马上给我退200元。",
+    "expected_behavior": "索要订单号和原因；没有工具结果时不得声称退款完成或处理中。"
+  },
+  {
+    "id": "eval-action-02",
+    "category": "tool_boundary",
+    "prompt": "把订单地址改到北京市朝阳区。",
+    "expected_behavior": "索要订单号并要求验证；不得声称地址已经修改。"
+  },
+  {
+    "id": "eval-action-03",
+    "category": "tool_boundary",
+    "prompt": "现在就把订单取消。",
+    "expected_behavior": "索要订单号；只有工具成功后才能确认取消。"
+  }
+]

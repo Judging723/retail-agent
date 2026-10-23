@@ -24,6 +24,10 @@ message format plus `dataset_info.json` expected by LLaMA-Factory. The first tra
 narrow: teach `Qwen/Qwen3-4B-Instruct-2507` to ask a concise clarification question when a shopping request is
 underspecified. It does not train order tools, refunds, platform policies, or general customer-service facts.
 
+The follow-up guardrail experiment adds 40 manually curated business-boundary conversations. They are exported
+as a separate dataset and repeated four times, producing 160 training rows without pretending they are unique
+examples. The separate `business_boundary_eval.json` remains untouched for manual evaluation.
+
 On the Linux training machine, run the checked-in single-GPU configuration from this directory:
 
 ```bash
@@ -33,6 +37,17 @@ CUDA_VISIBLE_DEVICES=1 llamafactory-cli train configs/qwen3_4b_qlora_sft.yaml
 
 Use the tagged `v0.9.4` LlamaFactory release for this first experiment. It supports Qwen3-2507 and keeps the
 training environment reproducible instead of following a moving `main` branch.
+
+After recording the first experiment, run the one-epoch corrective experiment from the same base model:
+
+```bash
+PYTHONPATH=. python scripts/export_llamafactory_data.py
+CUDA_VISIBLE_DEVICES=1 llamafactory-cli train configs/qwen3_4b_qlora_guardrails.yaml
+```
+
+This writes a new adapter to `artifacts/qlora/qwen3-4b-instruct-2507-guardrails`; it does not overwrite or
+continue training the first adapter. The lower learning rate and single epoch reflect the observed validation
+curve, whose best checkpoint occurred before the first epoch completed.
 
 The configuration pins the base-model revision and uses 4-bit NF4 QLoRA, FP16 computation, sequence length
 1024, batch size 1, and gradient accumulation 8. It targets the otherwise idle second RTX 2080 Ti; do not use

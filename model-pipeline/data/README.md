@@ -16,3 +16,12 @@ claim about general Chinese entity recognition.
 
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.
+
+`business_boundary_train.json` is a small, manually curated corrective set. It teaches four boundaries that
+the public dialogue corpus does not cover: do not invent catalog results, do not invent policies, ask for an
+order number before an order lookup, and do not claim that a business action succeeded without a tool result.
+The export command repeats these 40 records four times so they remain visible beside 1,910 public training
+samples. This repeat factor is an explicit sampling choice, not additional evidence or additional unique data.
+
+`business_boundary_eval.json` contains 12 held-out prompts for manual behavioral evaluation. These prompts are
+never exported into the training dataset.

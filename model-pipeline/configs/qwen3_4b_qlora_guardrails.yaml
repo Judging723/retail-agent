@@ -1,0 +1,48 @@
+### Pinned base model
+model_name_or_path: Qwen/Qwen3-4B-Instruct-2507
+model_revision: f50518eb58dfc750271b273fc113bdfc16ec2280
+trust_remote_code: true
+quantization_bit: 4
+quantization_method: bnb
+quantization_type: nf4
+double_quantization: true
+
+### QLoRA method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 8
+lora_target: all
+
+### Public clarification data plus small curated boundary set
+dataset: retail_agent_train,retail_agent_boundary_train
+eval_dataset: retail_agent_dev
+dataset_dir: data/processed/llamafactory
+template: qwen3_nothink
+default_system: 你是电商客服助手。只根据当前对话、知识库内容和工具返回结果作答。没有依据时不得编造商品、库存、价格、订单状态或平台政策；没有成功的工具结果时不得声称业务操作已经完成。信息不足时只追问一个最关键的问题。
+cutoff_len: 1024
+train_on_prompt: false
+overwrite_cache: true
+preprocessing_num_workers: 8
+dataloader_num_workers: 4
+
+### One controlled corrective run
+output_dir: artifacts/qlora/qwen3-4b-instruct-2507-guardrails
+logging_steps: 10
+save_strategy: epoch
+eval_strategy: epoch
+load_best_model_at_end: false
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### Single RTX 2080 Ti training
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 5.0e-5
+num_train_epochs: 1.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+fp16: true
+seed: 42
