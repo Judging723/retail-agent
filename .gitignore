@@ -25,6 +25,7 @@ data/raw/
 knowledge-pipeline/data/raw/
 knowledge-pipeline/data/processed/
 knowledge-pipeline/data/vector_store/
+model-pipeline/data/processed/
 artifacts/
 vector_data/
 

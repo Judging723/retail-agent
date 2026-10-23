@@ -16,6 +16,7 @@
 - 在数据库查询中强制绑定当前会话客户，阻止跨客户读取订单
 - 通过退款工具创建 `requested` 申请，并校验订单状态、可退金额和幂等键
 - 使用 20 条固定 Agent 用例评测工具选择、参数提取和不调用工具的克制能力
+- 将公开购物对话转换为去重、脱敏且按来源隔离的 SFT 数据，并记录可复现校验清单
 - 为请求生成或透传 Request ID，并记录请求状态与耗时
 - 对未处理异常返回不泄露内部信息的统一错误响应
 - 使用少量自动化测试验证核心流程
@@ -172,6 +173,11 @@ knowledge-pipeline/
 │   └── evaluation/        # Hit@K、MRR 等离线指标
 ├── scripts/               # 可复现实验入口
 └── tests/                 # 知识流水线单元测试
+model-pipeline/
+├── model_pipeline/        # 对话解析、PII 脱敏、去重和稳定数据划分
+├── scripts/               # SFT 数据生成入口
+├── data/reports/          # 输入版本、处理统计和输出哈希
+└── tests/                 # 数据质量、可复现性和防泄漏测试
 infra/                 # 本地 MySQL Docker Compose
 docs/                  # 项目范围和学习笔记
 ```
@@ -279,7 +285,8 @@ python scripts/evaluate_agent.py --output eval/results/deepseek-baseline.json
 2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
 3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
-5. Agent 离线评测基线（已完成）；训练数据治理（下一步）
-6. 独立的微调、量化与模型部署
+5. Agent 离线评测基线与训练数据治理（已完成）
+6. NLU/情感小模型基线与评测（下一步）
+7. 独立的 LLM 微调、量化与模型部署
 
 详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。

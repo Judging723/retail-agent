@@ -1,0 +1,61 @@
+{
+  "format_version": 1,
+  "dataset": {
+    "name": "Chinese Ambiguous Reference",
+    "source_url": "https://github.com/ygan/Chinese-Ambiguous-Reference",
+    "source_revision": "3fe3a42233571914ee4a5ccaec3f3af97966d9c9",
+    "license": "MIT",
+    "input_sha256": "f9d9b9c606ba65a72ef9dff1ce7f57172cfff97bf4e585704a156852ea51938e"
+  },
+  "transformation": {
+    "sample_unit": "one supervised sample per assistant response",
+    "split_strategy": "sha256(source_id) bucket: train 0-79, dev 80-89, test 90-99",
+    "deduplication": "sha256 of canonical redacted messages",
+    "pii_policy": "high-confidence regex pseudonymization before output"
+  },
+  "statistics": {
+    "source_documents": 1073,
+    "candidate_samples": 4230,
+    "duplicates_removed": 97,
+    "output_samples": 4133,
+    "source_documents_by_split": {
+      "train": 863,
+      "dev": 99,
+      "test": 111
+    },
+    "output_sources_by_split": {
+      "train": 852,
+      "dev": 98,
+      "test": 109
+    },
+    "samples_by_split": {
+      "train": 3346,
+      "dev": 372,
+      "test": 415
+    },
+    "redactions": {},
+    "parser_recoveries": {
+      "missing_separator_lines": 4,
+      "continuation_lines": 2,
+      "unbalanced_quote_lines": 30,
+      "leading_assistant_turns_removed": 421
+    }
+  },
+  "outputs": {
+    "train": {
+      "file": "train.jsonl",
+      "records": 3346,
+      "sha256": "3c369d7c053bd022bc07fd42b47307bd540ff6a2a40112c850ee4b0ed0ba7af4"
+    },
+    "dev": {
+      "file": "dev.jsonl",
+      "records": 372,
+      "sha256": "3dd47cc1c0492d135635528cf441bb6eeefe933b2399b2de39c9251eda16f386"
+    },
+    "test": {
+      "file": "test.jsonl",
+      "records": 415,
+      "sha256": "01a0315998b9b790e71e90ba72b7727973ef6d657a66305e7bf22eada0d7f01e"
+    }
+  }
+}
