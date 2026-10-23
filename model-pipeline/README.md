@@ -103,3 +103,16 @@ The recorded MPS run fine-tuned all 38.5 million parameters in about 163 seconds
 accuracy is `0.833` and macro-F1 is `0.669`, compared with `0.782` and `0.569` for the TF-IDF baseline.
 Neutral-class F1 improved from `0.121` to `0.308` but remains the weakest class. These numbers still measure
 agreement with synthetic pseudo-labels, not accuracy on human-annotated customer-service conversations.
+
+Run one local prediction after training:
+
+```bash
+python scripts/predict_sentiment.py "商品已经坏了，我非常生气，要求马上处理。"
+```
+
+The CLI loads only the local checkpoint and returns the three probabilities, predicted sentiment, and a
+customer-attention hint. `risk_level` is a transparent heuristic: `high` requires both a negative prediction
+and an explicit escalation phrase such as “投诉” or “生气”; `medium` covers another negative prediction or
+negative probability `>= 0.40`. It is not a separately trained or calibrated risk model. The predictor is
+intentionally not embedded in FastAPI yet, so the online service does not carry an always-loaded 147 MB
+classifier before a real consumer is defined.
