@@ -17,6 +17,7 @@
 - 通过退款工具创建 `requested` 申请，并校验订单状态、可退金额和幂等键
 - 使用 20 条固定 Agent 用例评测工具选择、参数提取和不调用工具的克制能力
 - 将公开购物对话转换为去重、脱敏且按来源隔离的 SFT 数据，并记录可复现校验清单
+- 使用字符 TF-IDF 与逻辑回归建立“是否需要澄清”的可解释 NLU 基线
 - 为请求生成或透传 Request ID，并记录请求状态与耗时
 - 对未处理异常返回不泄露内部信息的统一错误响应
 - 使用少量自动化测试验证核心流程
@@ -174,9 +175,9 @@ knowledge-pipeline/
 ├── scripts/               # 可复现实验入口
 └── tests/                 # 知识流水线单元测试
 model-pipeline/
-├── model_pipeline/        # 对话解析、PII 脱敏、去重和稳定数据划分
-├── scripts/               # SFT 数据生成入口
-├── data/reports/          # 输入版本、处理统计和输出哈希
+├── model_pipeline/        # 数据治理、弱标签生成、NLU 训练与评测
+├── scripts/               # SFT/NLU 数据生成与训练入口
+├── data/reports/          # 输入版本、处理统计、输出哈希和实验指标
 └── tests/                 # 数据质量、可复现性和防泄漏测试
 infra/                 # 本地 MySQL Docker Compose
 docs/                  # 项目范围和学习笔记
@@ -277,6 +278,28 @@ python scripts/evaluate_agent.py --output eval/results/deepseek-baseline.json
 测试集、逐例结果、失败分析和配置指纹见
 [Agent 评测说明](customer-service-app/backend/eval/README.md)。
 
+## 澄清检测 NLU 基线
+
+模型流水线从公开对话中生成 3961 条弱监督样本：根据下一组客服回复的原始策略编码，推导当前
+用户表达是否需要进一步澄清。样本按完整源对话划分，避免同一对话的不同轮次泄漏到测试集。
+
+| 测试集基线 | Accuracy | Macro-F1 |
+| --- | ---: | ---: |
+| 多数类 | 0.541 | 0.351 |
+| 关键词规则 | 0.564 | 0.555 |
+| 字符 TF-IDF + 逻辑回归 | 0.787 | 0.787 |
+
+```bash
+cd model-pipeline
+python scripts/prepare_nlu_data.py
+python scripts/train_nlu_baseline.py
+```
+
+这些数字只适用于固定的弱监督测试集，不代表线上业务准确率。原始数字编码存在文档与实际分布
+不完全一致的问题，因此每条样本保留推导所用的原始编码，冲突样本会被剔除。数据清单、混淆矩阵、
+模型配置和环境版本见 [NLU 数据报告](model-pipeline/data/reports/nlu_dataset_manifest.json)与
+[NLU 基线报告](model-pipeline/data/reports/nlu_baseline.json)。
+
 ## 后续路线
 
 每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
@@ -286,7 +309,7 @@ python scripts/evaluate_agent.py --output eval/results/deepseek-baseline.json
 3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
 5. Agent 离线评测基线与训练数据治理（已完成）
-6. NLU/情感小模型基线与评测（下一步）
+6. 澄清检测 NLU 小模型基线与评测（已完成）；情感数据基线（下一步）
 7. 独立的 LLM 微调、量化与模型部署
 
 详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。
