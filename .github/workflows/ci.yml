@@ -7,6 +7,28 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
+    env:
+      RETAIL_ENVIRONMENT: test
+      RETAIL_DB_HOST: 127.0.0.1
+      RETAIL_DB_PORT: 3306
+      RETAIL_DB_NAME: retail_agent
+      RETAIL_DB_USER: retail_app
+      RETAIL_DB_PASSWORD: retail_ci_password
+    services:
+      mysql:
+        image: mysql:8.4.11
+        env:
+          MYSQL_DATABASE: retail_agent
+          MYSQL_USER: retail_app
+          MYSQL_PASSWORD: retail_ci_password
+          MYSQL_ROOT_PASSWORD: retail_ci_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pretail_ci_root_password --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,7 +53,10 @@ jobs:
           bash -n model-serving/serve.sh
       - name: Test
         run: |
-          pytest customer-service-app/backend/tests -m "not integration"
+          cd customer-service-app/backend
+          alembic upgrade head
+          pytest tests
+          cd ../..
           pytest knowledge-pipeline/tests
           pytest model-pipeline/tests
           python model-serving/smoke_test.py --help
