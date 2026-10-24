@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "task": "ecommerce customer-service response generation",
+  "base_model": {
+    "name": "Qwen/Qwen3-4B-Instruct-2507",
+    "revision": "f50518eb58dfc750271b273fc113bdfc16ec2280"
+  },
+  "data": {
+    "public_dataset": "Chinese Ambiguous Reference",
+    "license": "MIT",
+    "train_samples": 1910,
+    "dev_samples": 253,
+    "test_samples": 270,
+    "business_boundary_unique_samples": 40,
+    "business_boundary_exported_rows": 160
+  },
+  "hardware": {
+    "available_gpus": "2 x NVIDIA GeForce RTX 2080 Ti 11 GB",
+    "training_strategy": "single GPU QLoRA",
+    "training_gpu": 1
+  },
+  "experiments": {
+    "base_model": {
+      "test_loss": 6.781534671783447
+    },
+    "clarification_qlora": {
+      "epochs": 3,
+      "train_loss": 1.194909195520888,
+      "best_checkpoint": "checkpoint-200",
+      "best_checkpoint_epoch": 0.837696335078534,
+      "best_dev_loss": 1.857354760169983,
+      "test_loss": 1.8193343877792358,
+      "train_runtime_seconds": 2232.1266
+    },
+    "guardrail_corrective_qlora": {
+      "epochs": 1,
+      "learning_rate": 0.00005,
+      "train_loss": 2.2328,
+      "dev_loss": 1.8745,
+      "test_loss": 1.8352537155151367,
+      "train_runtime_seconds": 795.25
+    }
+  },
+  "manual_behavior_evaluation": {
+    "total_cases": 12,
+    "strict_pass": 6,
+    "partial": 4,
+    "fail": 2,
+    "known_failures": [
+      "A stock question incorrectly requested an order number.",
+      "An opened-product return question received an unsupported categorical policy answer."
+    ],
+    "interpretation": "Corrective training improved business boundaries but did not make model-only policy answers reliable. The online application therefore uses deterministic policy fallback rules."
+  },
+  "serving": {
+    "engine": "vLLM 0.32.0",
+    "mode": "FP16 base model plus runtime LoRA adapter",
+    "openai_compatible_endpoint_verified": true,
+    "cross_device_application_integration": "deferred because the two machines currently have no network route",
+    "quantization_completed": false
+  }
+}

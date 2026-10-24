@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            customer-service-app/backend/pyproject.toml
+            knowledge-pipeline/pyproject.toml
+            model-pipeline/pyproject.toml
+      - name: Install Python modules
+        run: |
+          python -m pip install -e "customer-service-app/backend[dev]"
+          python -m pip install -e "knowledge-pipeline[dev]"
+          python -m pip install -e "model-pipeline[dev]"
+      - name: Lint
+        run: |
+          ruff check customer-service-app/backend/app customer-service-app/backend/tests
+          ruff check knowledge-pipeline
+          ruff check model-pipeline
+          ruff check model-serving/smoke_test.py
+          bash -n model-serving/serve.sh
+      - name: Test
+        run: |
+          pytest customer-service-app/backend/tests -m "not integration"
+          pytest knowledge-pipeline/tests
+          pytest model-pipeline/tests
+          python model-serving/smoke_test.py --help
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: customer-service-app/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: customer-service-app/frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

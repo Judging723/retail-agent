@@ -49,6 +49,18 @@ This writes a new adapter to `artifacts/qlora/qwen3-4b-instruct-2507-guardrails`
 continue training the first adapter. The lower learning rate and single epoch reflect the observed validation
 curve, whose best checkpoint occurred before the first epoch completed.
 
+## Recorded results
+
+The base model produced test loss `6.7815`. The first clarification adapter reduced test loss to `1.8193`;
+its best development checkpoint was step 200, before the first epoch completed. A separate one-epoch corrective
+adapter produced development loss `1.8745` and test loss `1.8353`.
+
+A 12-case manual business-boundary check recorded 6 strict passes, 4 partial answers, and 2 failures. This small
+set is a behavior regression check, not an accuracy benchmark. In particular, the adapter still gave one
+unsupported return-policy answer, so the online application uses a deterministic policy fallback instead of
+trusting model-only answers. Exact inputs and results are recorded in
+`data/reports/qlora_experiments.json`.
+
 The configuration pins the base-model revision and uses 4-bit NF4 QLoRA, FP16 computation, sequence length
 1024, batch size 1, and gradient accumulation 8. It targets the otherwise idle second RTX 2080 Ti; do not use
 both GPUs until a measured single-GPU limitation justifies distributed training.
@@ -102,6 +114,6 @@ The entity baseline deliberately covers only the arguments used by the current o
 `amount`, and an explicitly phrased refund `reason`. It uses regular expressions and a 13-case hand-written
 regression set. This is an interpretable starting point, not a general named-entity recognition model.
 
-It is not wired into the online Agent. DeepSeek Function Calling already produces tool arguments, and Pydantic
+It is not wired into the online Agent. OpenAI-compatible Function Calling already produces tool arguments, and Pydantic
 validation remains the final authority. Adding a second online argument path would duplicate responsibility
 without improving the current flow.

@@ -90,7 +90,6 @@ class OpenAICompatibleLLMClient:
                 messages=list(messages),
                 tools=list(tools),
                 tool_choice="auto",
-                extra_body={"thinking": {"type": "disabled"}},
             )
         except (
             APIConnectionError,

@@ -172,7 +172,7 @@ function resetConversation() {
       </a>
       <div class="runtime-status">
         <span class="status-dot"></span>
-        FastAPI · DeepSeek · RAG
+        FastAPI · RAG · Agent
       </div>
     </header>
 

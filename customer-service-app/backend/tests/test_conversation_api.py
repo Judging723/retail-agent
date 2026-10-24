@@ -8,6 +8,7 @@ from httpx2 import AsyncClient
 
 from app.api.dependencies import get_llm_client
 from app.llm import AssistantTurn, ChatMessage, LLMUnavailableError, ToolDefinition
+from app.services.policy_guardrail import POLICY_FALLBACK_RESPONSE
 
 pytestmark = [
     pytest.mark.anyio,
@@ -258,6 +259,37 @@ async def test_same_customer_can_create_multiple_conversations(
     assert first_response.status_code == 201
     assert second_response.status_code == 201
     assert first_response.json()["conversation_no"] != second_response.json()["conversation_no"]
+
+
+async def test_unknown_policy_uses_deterministic_fallback_without_calling_llm(
+    application: FastAPI,
+    api_client: AsyncClient,
+) -> None:
+    fake_llm = FakeLLMClient("退款通常三天到账。")
+    application.dependency_overrides[get_llm_client] = lambda: fake_llm
+
+    try:
+        suffix = uuid4().hex[:12]
+        create_response = await api_client.post(
+            "/api/v1/conversations",
+            json={
+                "customer_no": f"CUST-POLICY-{suffix}",
+                "display_name": "政策边界测试用户",
+            },
+        )
+        conversation_no = create_response.json()["conversation_no"]
+
+        response = await api_client.post(
+            f"/api/v1/conversations/{conversation_no}/chat",
+            json={"content": "退款一般几天到账？"},
+        )
+    finally:
+        application.dependency_overrides.pop(get_llm_client, None)
+
+    assert response.status_code == 201
+    assert response.json()["content"] == POLICY_FALLBACK_RESPONSE
+    assert response.json()["sources"] == []
+    assert fake_llm.calls == []
 
 
 async def test_get_missing_conversation_returns_404(

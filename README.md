@@ -1,29 +1,34 @@
 # Retail Agent
 
-一个用于学习和作品展示的电商客服项目。当前目标不是模拟大型生产平台，而是先完成一个可以运行、可以解释的最小聊天闭环。
+一个用于学习和作品展示的电商 AI 客服平台。项目已经形成在线客服、知识检索、业务工具、
+离线训练和 GPU 推理服务的可复现闭环，同时明确保留教育性项目的边界。
 
 ## 当前能力
 
 - 使用 FastAPI 提供 HTTP API
 - 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话、消息、订单、物流与退款
-- 调用 DeepSeek 等 OpenAI 兼容模型生成客服回复
+- 通过统一的 OpenAI 兼容客户端调用 DeepSeek 或本地 vLLM 模型
 - 通过 SSE 流式返回模型内容，并保存多轮对话历史
 - 使用 1073 条公开真实购物对话案例进行 BM25 + Milvus 混合 RAG，并返回来源、许可和数据版本
 - 在独立知识流水线中实现数据下载转换、BGE 中文向量检索、Milvus 持久化和固定离线评测
 - 提供 Vue 3 聊天页面，展示多轮消息和知识来源
 - 建立订单、物流和退款业务模型，并使用数据库迁移管理表结构
-- 通过 DeepSeek Function Calling 查询当前客户的订单与物流，并记录工具审计日志
+- 通过 Function Calling 查询当前客户的订单与物流，并记录工具审计日志
 - 在数据库查询中强制绑定当前会话客户，阻止跨客户读取订单
 - 通过退款工具创建 `requested` 申请，并校验订单状态、可退金额和幂等键
 - 使用 20 条固定 Agent 用例评测工具选择、参数提取和不调用工具的克制能力
 - 将公开购物对话转换为去重、脱敏且按来源隔离的 SFT 数据，并记录可复现校验清单
 - 使用字符 TF-IDF 与逻辑回归建立“是否需要澄清”的可解释 NLU 基线
 - 为订单号、退款金额和退款原因建立最小规则实体抽取基线与固定回归集
+- 使用 Qwen3-4B 完成两轮 QLoRA 实验，并记录基础模型、适配器和纠偏训练指标
+- 使用 vLLM 0.32.0 加载 FP16 基础模型与 LoRA，验证 OpenAI 兼容推理接口
+- 对知识库不存在的平台政策使用确定性闸门，避免模型编造期限、金额或承诺
 - 为请求生成或透传 Request ID，并记录请求状态与耗时
 - 对未处理异常返回不泄露内部信息的统一错误响应
-- 使用少量自动化测试验证核心流程
+- 使用自动化测试、前端生产构建和 GitHub Actions 验证核心流程
 
-尚未实现权威平台规则知识库、实际资金退款、生成式 LLM 微调和量化。
+尚未实现权威平台规则知识库、实际资金退款和量化性能实验。跨设备模型联调因两台机器当前没有
+网络路由而暂缓；GPU 机器上的本地 vLLM 接口已经验证。
 
 ## 核心流程
 
@@ -35,7 +40,8 @@ FastAPI Router
 ConversationService
   ├── SQLAlchemy → MySQL
   ├── BM25 + BGE/Milvus + RRF → 公开购物澄清案例
-  └── CustomerSupportAgent → DeepSeek API
+  ├── PolicyGuardrail → 未知平台政策的确定性答复
+  └── CustomerSupportAgent → OpenAI 兼容模型（DeepSeek / vLLM）
         ├── get_order_status → 参数校验 → 客户权限边界 → MySQL
         └── request_refund → 权限与金额规则 → 幂等写入 → 审计日志
 ```
@@ -91,12 +97,23 @@ cd customer-service-app/backend
 cp .env.example .env
 ```
 
-编辑 `customer-service-app/backend/.env`，让数据库密码与 `infra/.env` 保持一致，并填写自己的 DeepSeek API Key：
+编辑 `customer-service-app/backend/.env`，让数据库密码与 `infra/.env` 保持一致。可选择云端
+DeepSeek 或本地 vLLM，两者共用同一个客户端。
+
+DeepSeek 配置示例：
 
 ```ini
 RETAIL_LLM_API_BASE=https://api.deepseek.com
 RETAIL_LLM_API_KEY=你的密钥
 RETAIL_LLM_MODEL=deepseek-flash
+```
+
+本地 vLLM 配置示例：
+
+```ini
+RETAIL_LLM_API_BASE=http://127.0.0.1:8001/v1
+RETAIL_LLM_API_KEY=local-vllm
+RETAIL_LLM_MODEL=retail-agent
 ```
 
 `.env` 已被 Git 忽略，不要把 API Key 提交到仓库。
@@ -180,8 +197,10 @@ model-pipeline/
 ├── scripts/               # SFT、NLU 与实体评测入口
 ├── data/reports/          # 输入版本、处理统计、输出哈希和实验指标
 └── tests/                 # 数据质量、可复现性和防泄漏测试
+model-serving/              # vLLM + LoRA 启动脚本、配置和冒烟测试
 infra/                 # 本地 MySQL Docker Compose
 docs/                  # 项目范围和学习笔记
+.github/workflows/     # 后端、离线流水线和前端 CI
 ```
 
 ## 公开案例知识库
@@ -301,16 +320,49 @@ python scripts/train_nlu_baseline.py
 模型配置和环境版本见 [NLU 数据报告](model-pipeline/data/reports/nlu_dataset_manifest.json)与
 [NLU 基线报告](model-pipeline/data/reports/nlu_baseline.json)。
 
+## 政策防幻觉边界
+
+当前公开知识库只有购物澄清案例，不包含权威退款、退货、赔付或保修规则。仅靠提示词或微调，
+模型仍可能生成看似合理但没有依据的具体数字。因此 `ConversationService` 在调用 RAG 和 LLM 之前
+执行一个小型确定性政策闸门：命中知识库未覆盖的政策问题时，不调用模型、不返回无关引用，统一
+提示用户查看订单页规则或联系人工客服。固定测试同时验证普通商品咨询、具体订单查询和退款操作
+不会被误拦截。
+
+这不是完整政策系统；当项目以后接入版本化的权威规则库时，应逐条用可引用的规则替代这些兜底。
+
+## QLoRA 与模型部署实验
+
+在一台配备两张 RTX 2080 Ti（每张 11 GB）的 Ubuntu 主机上，项目以单卡 4-bit NF4 QLoRA
+微调 `Qwen/Qwen3-4B-Instruct-2507`。第一轮训练使用 1910 条训练样本、253 条开发样本和
+270 条测试样本；第二轮加入 40 条人工业务边界对话，并通过重复采样导出 160 行纠偏数据。
+
+| 实验 | Dev loss | Test loss | 说明 |
+| --- | ---: | ---: | --- |
+| 未微调基础模型 | — | 6.7815 | 固定测试集基线 |
+| 澄清 QLoRA | 1.8574 | 1.8193 | 最佳 checkpoint 为 step 200 |
+| 一轮业务边界纠偏 | 1.8745 | 1.8353 | 低学习率、1 epoch |
+
+12 条人工业务边界回归中，严格通过 6 条、部分通过 4 条、失败 2 条。这不是准确率声明，而是明确
+揭示模型边界的行为检查。完整指标和失败案例见
+[QLoRA 实验报告](model-pipeline/data/reports/qlora_experiments.json)。
+
+vLLM 0.32.0 已在 GPU 主机上成功加载 FP16 基础模型和纠偏 LoRA，`/v1/models` 与
+`/v1/chat/completions` 均已验证。启动脚本、冒烟测试和网络限制见
+[模型服务说明](model-serving/README.md)。当前没有做 AWQ/GPTQ/GGUF，因此不声称完成量化。
+
 ## 后续路线
 
 每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
 
-1. DeepSeek 多轮聊天、流式响应与 Vue 页面（已完成）
+1. OpenAI 兼容多轮聊天、流式响应与 Vue 页面（已完成）
 2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
 3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
 5. Agent 离线评测基线与训练数据治理（已完成）
 6. 澄清检测 NLU 小模型基线与评测（已完成）
-7. 独立的 LLM 微调、量化与模型部署
+7. Qwen3-4B QLoRA、纠偏训练与 vLLM + LoRA 部署（已完成）
+8. 未知平台政策的确定性防幻觉闸门（已完成）
+9. AWQ/GPTQ/GGUF 量化对比（暂缓，尚未完成）
 
 详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。
+GitHub 演示顺序、简历表述和面试追问见 [求职展示指南](docs/PORTFOLIO_GUIDE.md)。

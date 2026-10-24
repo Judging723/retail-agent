@@ -15,6 +15,7 @@ from app.models import (
     MessageRole,
 )
 from app.rag import KnowledgeRetriever, RetrievedDocument
+from app.services.policy_guardrail import policy_fallback
 
 DEFAULT_SYSTEM_PROMPT = (
     "你是一名专业、谨慎的电商客服助手。"
@@ -41,6 +42,7 @@ class PreparedChat:
     next_sequence: int
     prompt: list[ChatMessage]
     sources: list[RetrievedDocument]
+    deterministic_response: str | None
 
 
 class ConversationService:
@@ -109,20 +111,22 @@ class ConversationService:
         llm_client: LLMClient,
         idempotency_key: str | None = None,
     ) -> Message:
-        agent = CustomerSupportAgent(
-            llm_client=llm_client,
-            order_tool_executor=OrderToolExecutor(self._session),
-        )
-        assistant_content = await agent.respond(
-            prepared_chat.prompt,
-            conversation_id=prepared_chat.conversation_id,
-            customer_id=prepared_chat.customer_id,
-            idempotency_key=idempotency_key
-            or (
-                f"conversation:{prepared_chat.conversation_id}:"
-                f"sequence:{prepared_chat.next_sequence}"
-            ),
-        )
+        assistant_content = prepared_chat.deterministic_response
+        if assistant_content is None:
+            agent = CustomerSupportAgent(
+                llm_client=llm_client,
+                order_tool_executor=OrderToolExecutor(self._session),
+            )
+            assistant_content = await agent.respond(
+                prepared_chat.prompt,
+                conversation_id=prepared_chat.conversation_id,
+                customer_id=prepared_chat.customer_id,
+                idempotency_key=idempotency_key
+                or (
+                    f"conversation:{prepared_chat.conversation_id}:"
+                    f"sequence:{prepared_chat.next_sequence}"
+                ),
+            )
         assistant_message = await self.save_chat_exchange(
             conversation_id=prepared_chat.conversation_id,
             next_sequence=prepared_chat.next_sequence,
@@ -146,7 +150,12 @@ class ConversationService:
             next_sequence = (
                 conversation.messages[-1].sequence_no + 1 if conversation.messages else 1
             )
-            retrieved_documents = knowledge_retriever.search(user_content)
+            deterministic_response = policy_fallback(user_content)
+            retrieved_documents = (
+                []
+                if deterministic_response is not None
+                else knowledge_retriever.search(user_content)
+            )
             system_messages: list[ChatMessage] = [
                 {"role": "system", "content": DEFAULT_SYSTEM_PROMPT}
             ]
@@ -173,6 +182,7 @@ class ConversationService:
             next_sequence=next_sequence,
             prompt=prompt,
             sources=retrieved_documents,
+            deterministic_response=deterministic_response,
         )
 
     async def save_chat_exchange(

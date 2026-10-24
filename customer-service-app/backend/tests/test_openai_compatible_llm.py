@@ -88,7 +88,6 @@ async def test_openai_compatible_client_returns_tool_call() -> None:
         messages=[{"role": "user", "content": "查订单 ORDER-001"}],
         tools=tools,
         tool_choice="auto",
-        extra_body={"thinking": {"type": "disabled"}},
     )
 
 
