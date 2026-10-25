@@ -1,7 +1,8 @@
 from app.core.config import Settings
 
 
-def test_default_settings() -> None:
+def test_default_settings(monkeypatch) -> None:
+    monkeypatch.delenv("RETAIL_ENVIRONMENT", raising=False)
     settings = Settings(_env_file=None)
 
     assert settings.environment == "development"
