@@ -25,8 +25,6 @@
 - 对未处理异常返回不泄露内部信息的统一错误响应
 - 使用自动化测试、前端生产构建和 GitHub Actions 验证核心流程
 
-尚未实现权威平台规则知识库、实际资金退款和量化性能实验。跨设备模型联调因两台机器当前没有
-网络路由而暂缓；GPU 机器上的本地 vLLM 接口已经验证。
 
 ## 核心流程
 
@@ -331,17 +329,5 @@ python scripts/evaluate_agent.py --output benchmarks/results/deepseek-baseline.j
 
 vLLM 0.32.0 已在 GPU 主机上成功加载 FP16 基础模型和纠偏 LoRA，`/v1/models` 与
 `/v1/chat/completions` 均已验证。启动脚本、冒烟测试和网络限制见
-[模型服务说明](model-serving/README.md)。当前没有做 AWQ/GPTQ/GGUF，因此不声称完成量化。
+[模型服务说明](model-serving/README.md)。
 
-## 后续路线
-
-每个阶段都先完成一个可以演示的纵向闭环，再进入下一阶段：
-
-1. OpenAI 兼容多轮聊天、流式响应与 Vue 页面（已完成）
-2. 关键词 RAG 基线和来源引用（已完成，已由向量检索替换）
-3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
-4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
-5. Agent 离线评测基线与训练数据治理（已完成）
-6. Qwen3-4B QLoRA、纠偏训练与 vLLM + LoRA 部署（已完成）
-7. 未知平台政策的确定性防幻觉闸门（已完成）
-8. AWQ/GPTQ/GGUF 量化对比（暂缓，尚未完成）
