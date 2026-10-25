@@ -14,17 +14,9 @@ from app.models import (
     Message,
     MessageRole,
 )
+from app.policies import policy_fallback
+from app.prompts import DEFAULT_SYSTEM_PROMPT
 from app.rag import KnowledgeRetriever, RetrievedDocument
-from app.services.policy_guardrail import policy_fallback
-
-DEFAULT_SYSTEM_PROMPT = (
-    "你是一名专业、谨慎的电商客服助手。"
-    "请根据会话内容回答；信息不足时先追问，"
-    "不得编造订单、物流、退款或赔付状态。"
-    "涉及具体订单状态时，必须使用工具查询；订单号不足时先向用户追问。"
-    "检索到的公开数据是购物澄清案例，不是平台业务规则；"
-    "只能借鉴其中的澄清思路，不能把案例内容说成当前用户或平台的事实。"
-)
 
 
 class ConversationNotFoundError(Exception):

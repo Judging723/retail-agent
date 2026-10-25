@@ -138,6 +138,12 @@ pytest -v
 ruff check app tests
 ```
 
+也可以从仓库根目录运行统一检查：
+
+```bash
+make check
+```
+
 前端测试和生产构建：
 
 ```bash
@@ -168,7 +174,7 @@ sources → delta... → done
 customer-service-app/
 ├── backend/
 │   ├── data/             # 公开数据转换结果、署名和许可证
-│   ├── app/
+│   ├── app/              # 仅包含在线请求所需的运行时代码
 │   │   ├── agents/       # Agent 循环、工具定义、参数校验和受权执行
 │   │   ├── api/          # HTTP 路由和依赖
 │   │   ├── core/         # 配置、数据库连接和异常响应
@@ -177,9 +183,11 @@ customer-service-app/
 │   │   ├── models/       # SQLAlchemy 数据表映射
 │   │   ├── rag/          # 在线 BM25、Milvus 向量检索和 RRF 融合
 │   │   ├── schemas/      # 请求和响应结构
-│   │   └── services/     # 聊天业务流程
+│   │   ├── policies.py   # 不依赖模型的业务边界规则
+│   │   ├── prompts.py    # 在线与评测共享的系统提示词
+│   │   └── services/     # 聊天业务流程编排
+│   ├── benchmarks/       # Agent 离线评测代码、固定用例和版本化结果
 │   ├── migrations/       # Alembic 数据库迁移
-│   ├── eval/             # 固定 Agent 评测集、实验说明和版本化结果
 │   ├── scripts/          # 数据库检查与 Agent 评测入口
 │   └── tests/            # 核心行为测试
 └── frontend/              # Vue 3 + Vite 聊天页面
@@ -292,11 +300,11 @@ Vue 为每次发送生成 `Idempotency-Key`，同一条失败消息重试时复�
 ```bash
 cd customer-service-app/backend
 python scripts/evaluate_agent.py --validate-only
-python scripts/evaluate_agent.py --output eval/results/deepseek-baseline.json
+python scripts/evaluate_agent.py --output benchmarks/results/deepseek-baseline.json
 ```
 
 测试集、逐例结果、失败分析和配置指纹见
-[Agent 评测说明](customer-service-app/backend/eval/README.md)。
+[Agent 评测说明](customer-service-app/backend/benchmarks/README.md)。
 
 ## 澄清检测 NLU 基线
 

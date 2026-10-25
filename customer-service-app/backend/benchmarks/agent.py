@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.agents import CUSTOMER_SERVICE_TOOLS
 from app.agents.order_tools import GetOrderStatusArguments, RequestRefundArguments
 from app.llm import AssistantTurn, ChatMessage, LLMClient
-from app.services.conversation import DEFAULT_SYSTEM_PROMPT
+from app.prompts import DEFAULT_SYSTEM_PROMPT
 
 ExpectedTool = Literal["get_order_status", "request_refund"]
 

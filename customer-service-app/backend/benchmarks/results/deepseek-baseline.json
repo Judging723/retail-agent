@@ -1,7 +1,7 @@
 {
   "evaluated_at": "2026-10-23T01:18:57.694090+00:00",
   "model": "deepseek-v4-flash",
-  "cases_path": "eval/agent_cases.json",
+  "cases_path": "benchmarks/agent_cases.json",
   "cases_sha256": "65360c7ec2d9b1135677c97228e6f53544d647352c0b633e50e92b7bb305223c",
   "system_prompt_sha256": "50d74f6568d4658dc5465b9f961fea30dfc7a1e371f2bf9877bc6576394e2b37",
   "tools_sha256": "f4c03de02f311b386c877ee19d1b62287e0fdccc03e5746f4d47db14002fc3ba",

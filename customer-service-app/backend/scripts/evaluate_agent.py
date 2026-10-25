@@ -13,11 +13,11 @@ sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.agents import CUSTOMER_SERVICE_TOOLS
 from app.core.config import get_settings
-from app.evaluation import evaluate_agent_cases, load_agent_cases, summarize_agent_results
 from app.llm import OpenAICompatibleLLMClient
-from app.services.conversation import DEFAULT_SYSTEM_PROMPT
+from app.prompts import DEFAULT_SYSTEM_PROMPT
+from benchmarks import evaluate_agent_cases, load_agent_cases, summarize_agent_results
 
-DEFAULT_CASES_PATH = BACKEND_ROOT / "eval" / "agent_cases.json"
+DEFAULT_CASES_PATH = BACKEND_ROOT / "benchmarks" / "agent_cases.json"
 
 
 def parse_args() -> argparse.Namespace:

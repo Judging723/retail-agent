@@ -45,20 +45,13 @@ jobs:
           python -m pip install -e "knowledge-pipeline[dev]"
           python -m pip install -e "model-pipeline[dev]"
       - name: Lint
-        run: |
-          ruff check customer-service-app/backend/app customer-service-app/backend/tests
-          ruff check knowledge-pipeline
-          ruff check model-pipeline
-          ruff check model-serving/smoke_test.py
-          bash -n model-serving/serve.sh
+        run: make lint
       - name: Test
         run: |
           cd customer-service-app/backend
           alembic upgrade head
-          pytest tests
           cd ../..
-          pytest knowledge-pipeline/tests
-          pytest model-pipeline/tests
+          make test
           python model-serving/smoke_test.py --help
 
   frontend:

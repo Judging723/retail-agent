@@ -1,4 +1,4 @@
-from app.evaluation.agent import (
+from benchmarks.agent import (
     AgentEvalCase,
     AgentEvalResult,
     AgentEvalSummary,

@@ -3,17 +3,17 @@ import json
 from pathlib import Path
 
 from app.agents import CUSTOMER_SERVICE_TOOLS
-from app.evaluation import (
+from app.llm import AssistantTurn, FunctionToolCall
+from app.prompts import DEFAULT_SYSTEM_PROMPT
+from benchmarks import (
     AgentEvalCase,
     AgentEvalResult,
     evaluate_agent_turn,
     load_agent_cases,
     summarize_agent_results,
 )
-from app.llm import AssistantTurn, FunctionToolCall
-from app.services.conversation import DEFAULT_SYSTEM_PROMPT
 
-CASES_PATH = Path(__file__).resolve().parents[1] / "eval" / "agent_cases.json"
+CASES_PATH = Path(__file__).resolve().parents[1] / "benchmarks" / "agent_cases.json"
 BASELINE_PATH = CASES_PATH.parent / "results" / "deepseek-baseline.json"
 
 

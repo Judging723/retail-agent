@@ -29,12 +29,12 @@ Run a live DeepSeek baseline after configuring `RETAIL_LLM_API_KEY`:
 
 ```bash
 python scripts/evaluate_agent.py \
-  --output eval/results/deepseek-baseline.json
+  --output benchmarks/results/deepseek-baseline.json
 ```
 
 Use `--limit 3` for a low-cost smoke run. Do not use this fixed set to repeatedly tune the prompt;
 that would contaminate the reported result. Add a separate development set before systematic prompt
-optimization or fine-tuning. Generated result files under `eval/results/` should record the exact
+optimization or fine-tuning. Generated result files under `benchmarks/results/` should record the exact
 model name and evaluation time.
 
 ## Baseline

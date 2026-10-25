@@ -1,4 +1,4 @@
-from app.services.policy_guardrail import POLICY_FALLBACK_RESPONSE, policy_fallback
+from app.policies import POLICY_FALLBACK_RESPONSE, policy_fallback
 
 
 def test_policy_questions_use_deterministic_fallback() -> None:

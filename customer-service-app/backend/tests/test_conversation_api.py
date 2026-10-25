@@ -8,7 +8,7 @@ from httpx2 import AsyncClient
 
 from app.api.dependencies import get_llm_client
 from app.llm import AssistantTurn, ChatMessage, LLMUnavailableError, ToolDefinition
-from app.services.policy_guardrail import POLICY_FALLBACK_RESPONSE
+from app.policies import POLICY_FALLBACK_RESPONSE
 
 pytestmark = [
     pytest.mark.anyio,
