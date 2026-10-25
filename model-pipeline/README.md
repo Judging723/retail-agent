@@ -1,7 +1,7 @@
 # Model pipeline
 
-This directory is the offline model-engineering boundary. It currently prepares reproducible supervised
-fine-tuning (SFT) data and trains an interpretable clarification baseline.
+This directory is the offline model-engineering boundary. It prepares reproducible supervised fine-tuning
+(SFT) data, exports LLaMA-Factory datasets, and records the QLoRA experiments.
 
 ## What the preparation step does
 
@@ -75,9 +75,6 @@ python scripts/prepare_public_knowledge.py
 cd ../model-pipeline
 python scripts/prepare_sft_data.py
 PYTHONPATH=. python scripts/export_llamafactory_data.py
-python scripts/prepare_nlu_data.py
-python scripts/train_nlu_baseline.py
-python scripts/evaluate_entity_baseline.py
 pytest -v
 ruff check .
 ```
@@ -91,29 +88,3 @@ Generated files use a common chat format:
 Regex pseudonymization is deliberately described as a baseline, not anonymization. It reliably catches
 structured identifiers but cannot prove that free-form names and addresses have been removed. Before using
 private business conversations, add entity recognition, manual sampling, access control, and legal review.
-
-## Clarification NLU baseline
-
-The public JSON does not directly provide a clean binary label on each user utterance. The pipeline derives
-a weak label from the annotation codes on the next merged service response. It retains those original codes
-in every record and documents the mapping in `data/reports/nlu_dataset_manifest.json`.
-
-Three baselines are compared on fixed source-level splits:
-
-- the majority class;
-- an explicit keyword rule;
-- character TF-IDF features with logistic regression.
-
-Character n-grams are a useful Chinese baseline because they require neither a tokenizer nor a downloaded
-neural model. The classifier is still a statistical baseline, not the final Transformer model. Its purpose is
-to prove that the dataset, metrics, split, and artifact lifecycle work before expensive training is introduced.
-
-## Entity baseline
-
-The entity baseline deliberately covers only the arguments used by the current order tools: `order_no`,
-`amount`, and an explicitly phrased refund `reason`. It uses regular expressions and a 13-case hand-written
-regression set. This is an interpretable starting point, not a general named-entity recognition model.
-
-It is not wired into the online Agent. OpenAI-compatible Function Calling already produces tool arguments, and Pydantic
-validation remains the final authority. Adding a second online argument path would duplicate responsibility
-without improving the current flow.

@@ -7,10 +7,7 @@ name = "ecommerce-model-pipeline"
 version = "0.1.0"
 description = "Reproducible training-data preparation for the ecommerce support project"
 requires-python = ">=3.12,<3.13"
-dependencies = [
-    "joblib>=1.6,<2",
-    "scikit-learn>=1.9,<2",
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = [

@@ -7,13 +7,6 @@ versioned public source with `python scripts/prepare_sft_data.py`.
 rules, parser recoveries, split sizes, redaction counts, and output checksums. Dialogues that start with an
 assistant are excluded instead of truncating their opening context.
 
-The NLU stage adds `reports/nlu_dataset_manifest.json` for weak-label provenance and
-`reports/nlu_baseline.json` for fixed development/test metrics. Trained `.joblib` artifacts stay outside Git.
-
-`entity_cases.json` is a small hand-written regression set for the current order-tool fields. Its report is
-committed as `reports/entity_baseline.json`; a perfect score on these cases is only a regression check, not a
-claim about general Chinese entity recognition.
-
 The public dataset is suitable for learning clarification behavior. It is not a source of authoritative
 refund, logistics, compensation, or legal policies.
 

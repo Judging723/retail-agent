@@ -1,7 +1,7 @@
 # Retail Agent
 
 一个用于学习和作品展示的电商 AI 客服平台。项目已经形成在线客服、知识检索、业务工具、
-离线训练和 GPU 推理服务的可复现闭环，同时明确保留教育性项目的边界。
+离线训练和 GPU 推理服务的可复现闭环。
 
 ## 当前能力
 
@@ -18,8 +18,6 @@
 - 通过退款工具创建 `requested` 申请，并校验订单状态、可退金额和幂等键
 - 使用 20 条固定 Agent 用例评测工具选择、参数提取和不调用工具的克制能力
 - 将公开购物对话转换为去重、脱敏且按来源隔离的 SFT 数据，并记录可复现校验清单
-- 使用字符 TF-IDF 与逻辑回归建立“是否需要澄清”的可解释 NLU 基线
-- 为订单号、退款金额和退款原因建立最小规则实体抽取基线与固定回归集
 - 使用 Qwen3-4B 完成两轮 QLoRA 实验，并记录基础模型、适配器和纠偏训练指标
 - 使用 vLLM 0.32.0 加载 FP16 基础模型与 LoRA，验证 OpenAI 兼容推理接口
 - 对知识库不存在的平台政策使用确定性闸门，避免模型编造期限、金额或承诺
@@ -201,13 +199,12 @@ knowledge-pipeline/
 ├── scripts/               # 可复现实验入口
 └── tests/                 # 知识流水线单元测试
 model-pipeline/
-├── model_pipeline/        # 数据治理、弱标签生成、NLU 与实体基线
-├── scripts/               # SFT、NLU 与实体评测入口
+├── model_pipeline/        # SFT 数据治理、脱敏和 LLaMA-Factory 导出
+├── scripts/               # SFT 数据准备与导出入口
 ├── data/reports/          # 输入版本、处理统计、输出哈希和实验指标
 └── tests/                 # 数据质量、可复现性和防泄漏测试
 model-serving/              # vLLM + LoRA 启动脚本、配置和冒烟测试
 infra/                 # 本地 MySQL Docker Compose
-docs/                  # 项目范围和学习笔记
 .github/workflows/     # 后端、离线流水线和前端 CI
 ```
 
@@ -306,28 +303,6 @@ python scripts/evaluate_agent.py --output benchmarks/results/deepseek-baseline.j
 测试集、逐例结果、失败分析和配置指纹见
 [Agent 评测说明](customer-service-app/backend/benchmarks/README.md)。
 
-## 澄清检测 NLU 基线
-
-模型流水线从公开对话中生成 3961 条弱监督样本：根据下一组客服回复的原始策略编码，推导当前
-用户表达是否需要进一步澄清。样本按完整源对话划分，避免同一对话的不同轮次泄漏到测试集。
-
-| 测试集基线 | Accuracy | Macro-F1 |
-| --- | ---: | ---: |
-| 多数类 | 0.541 | 0.351 |
-| 关键词规则 | 0.564 | 0.555 |
-| 字符 TF-IDF + 逻辑回归 | 0.787 | 0.787 |
-
-```bash
-cd model-pipeline
-python scripts/prepare_nlu_data.py
-python scripts/train_nlu_baseline.py
-```
-
-这些数字只适用于固定的弱监督测试集，不代表线上业务准确率。原始数字编码存在文档与实际分布
-不完全一致的问题，因此每条样本保留推导所用的原始编码，冲突样本会被剔除。数据清单、混淆矩阵、
-模型配置和环境版本见 [NLU 数据报告](model-pipeline/data/reports/nlu_dataset_manifest.json)与
-[NLU 基线报告](model-pipeline/data/reports/nlu_baseline.json)。
-
 ## 政策防幻觉边界
 
 当前公开知识库只有购物澄清案例，不包含权威退款、退货、赔付或保修规则。仅靠提示词或微调，
@@ -367,10 +342,6 @@ vLLM 0.32.0 已在 GPU 主机上成功加载 FP16 基础模型和纠偏 LoRA，`
 3. 公开数据转换、Milvus 入库、相关性闸门、混合检索和 Reranker（已完成）
 4. 订单、物流查询与退款申请 Agent；参数校验、客户隔离、幂等和审计（已完成）
 5. Agent 离线评测基线与训练数据治理（已完成）
-6. 澄清检测 NLU 小模型基线与评测（已完成）
-7. Qwen3-4B QLoRA、纠偏训练与 vLLM + LoRA 部署（已完成）
-8. 未知平台政策的确定性防幻觉闸门（已完成）
-9. AWQ/GPTQ/GGUF 量化对比（暂缓，尚未完成）
-
-详细边界见 [项目范围](docs/PROJECT_SCOPE.md)。
-GitHub 演示顺序、简历表述和面试追问见 [求职展示指南](docs/PORTFOLIO_GUIDE.md)。
+6. Qwen3-4B QLoRA、纠偏训练与 vLLM + LoRA 部署（已完成）
+7. 未知平台政策的确定性防幻觉闸门（已完成）
+8. AWQ/GPTQ/GGUF 量化对比（暂缓，尚未完成）
