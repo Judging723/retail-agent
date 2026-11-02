@@ -137,14 +137,13 @@ async def test_refund_agent_creates_requested_refund_and_audit(
     application: FastAPI,
     api_client: AsyncClient,
     db_session: AsyncSession,
+    register_customer,
 ) -> None:
     suffix = uuid4().hex[:12]
     customer_no = f"CUST-API-REFUND-{suffix}"
     order_no = f"ORDER-{suffix}"
-    create_response = await api_client.post(
-        "/api/v1/conversations",
-        json={"customer_no": customer_no, "display_name": "退款 API 用户"},
-    )
+    await register_customer(customer_no, "退款 API 用户")
+    create_response = await api_client.post("/api/v1/conversations")
     conversation_no = create_response.json()["conversation_no"]
     async with db_session.begin():
         customer = await db_session.scalar(

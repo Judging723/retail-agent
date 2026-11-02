@@ -15,6 +15,10 @@
     "no_tool_cases": 9,
     "no_tool_accuracy": 0.8888888888888888
   },
+  "failure_summary": {
+    "unexpected_tool": 1,
+    "wrong_tool": 2
+  },
   "results": [
     {
       "case_id": "order_status_exact",

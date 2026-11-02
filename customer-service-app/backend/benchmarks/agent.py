@@ -12,6 +12,14 @@ from app.llm import AssistantTurn, ChatMessage, LLMClient
 from app.prompts import DEFAULT_SYSTEM_PROMPT
 
 ExpectedTool = Literal["get_order_status", "request_refund"]
+AgentFailureType = Literal[
+    "missing_tool",
+    "unexpected_tool",
+    "wrong_tool",
+    "multiple_tools",
+    "invalid_arguments",
+    "wrong_arguments",
+]
 
 
 class EvalMessage(BaseModel):
@@ -164,6 +172,31 @@ def summarize_agent_results(results: Sequence[AgentEvalResult]) -> AgentEvalSumm
             len(no_tool_results),
         ),
     )
+
+
+def classify_agent_failure(result: AgentEvalResult) -> AgentFailureType | None:
+    if result.tool_selection_correct and result.arguments_correct is not False:
+        return None
+    if result.expected_tool is None:
+        return "unexpected_tool"
+    if not result.predicted_tools:
+        return "missing_tool"
+    if len(result.predicted_tools) > 1:
+        return "multiple_tools"
+    if result.predicted_tools[0] != result.expected_tool:
+        return "wrong_tool"
+    if result.error is not None:
+        return "invalid_arguments"
+    return "wrong_arguments"
+
+
+def summarize_agent_failures(results: Sequence[AgentEvalResult]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for result in results:
+        failure_type = classify_agent_failure(result)
+        if failure_type is not None:
+            counts[failure_type] = counts.get(failure_type, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def _parse_arguments(

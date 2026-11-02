@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from httpx2 import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_knowledge_retriever
+from app.api.dependencies import get_knowledge_retriever, get_knowledge_runtime
 from app.core.config import get_settings
 from app.core.database import engine, get_db_session
 from app.main import create_app
@@ -38,12 +38,15 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture
-def application() -> Iterator[FastAPI]:
+def application(monkeypatch) -> Iterator[FastAPI]:
+    monkeypatch.setenv("RETAIL_ENVIRONMENT", "test")
     get_settings.cache_clear()
+    get_knowledge_runtime.cache_clear()
     app = create_app()
     app.dependency_overrides[get_knowledge_retriever] = StubKnowledgeRetriever
     yield app
     app.dependency_overrides.pop(get_knowledge_retriever, None)
+    get_knowledge_runtime.cache_clear()
     get_settings.cache_clear()
 
 
@@ -103,3 +106,26 @@ async def api_client(
             get_db_session,
             None,
         )
+
+
+@pytest.fixture
+def register_customer(api_client: AsyncClient):
+    async def register(
+        customer_no: str,
+        display_name: str | None = None,
+        password: str = "test-password-123",
+    ) -> dict[str, str]:
+        response = await api_client.post(
+            "/api/v1/auth/register",
+            json={
+                "customer_no": customer_no,
+                "display_name": display_name,
+                "password": password,
+            },
+        )
+        assert response.status_code == 201, response.text
+        headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+        api_client.headers.update(headers)
+        return headers
+
+    return register

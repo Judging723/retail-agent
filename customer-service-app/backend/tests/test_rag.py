@@ -1,3 +1,5 @@
+import logging
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -101,7 +103,7 @@ def test_hybrid_retrieval_promotes_exact_bm25_match() -> None:
     assert [result.source_id for result in results] == ["car-phone", "car-apple"]
 
 
-def test_reranker_reorders_hybrid_candidates() -> None:
+def test_reranker_reorders_hybrid_candidates(caplog) -> None:
     lexical_retriever = BM25Retriever(
         [
             _bm25_document("car-apple", "苹果"),
@@ -117,12 +119,34 @@ def test_reranker_reorders_hybrid_candidates() -> None:
         rerank_candidates=2,
     )
 
-    results = retriever.search("我想买苹果", limit=2)
+    with caplog.at_level(logging.INFO, logger="app.rag"):
+        results = retriever.search("我想买苹果", limit=2)
 
     assert [result.source_id for result in results] == ["car-phone", "car-apple"]
     assert [result.score for result in results] == [0.9, 0.1]
     assert reranker.calls[0][0] == "我想买苹果"
     assert reranker.calls[0][1][0].startswith("购物澄清案例：苹果\n")
+    assert "status=completed" in caplog.text
+    assert "vector_candidates=2" in caplog.text
+    assert "bm25_candidates=1" in caplog.text
+    assert "fused_candidates=2" in caplog.text
+    assert "returned_results=2" in caplog.text
+    assert "我想买苹果" not in caplog.text
+    assert re.search(r"reranker_ms=[0-9.]+", caplog.text)
+
+
+def test_vector_only_search_logs_zero_for_unused_stages(caplog) -> None:
+    retriever = KnowledgeRetriever(FakeMilvusClient(), FakeEmbedder())
+
+    with caplog.at_level(logging.INFO, logger="app.rag"):
+        results = retriever.search("包含隐私内容的查询", limit=2)
+
+    assert len(results) == 2
+    assert "bm25_ms=0.00" in caplog.text
+    assert "rrf_ms=0.00" in caplog.text
+    assert "reranker_ms=0.00" in caplog.text
+    assert "query_chars=9" in caplog.text
+    assert "包含隐私内容的查询" not in caplog.text
 
 
 def test_reranker_must_return_one_score_per_candidate() -> None:

@@ -14,6 +14,8 @@ The evaluator measures:
 - end-to-end correct tool and exact normalized arguments on tool cases;
 - exact argument accuracy after the correct tool has been selected;
 - no-tool accuracy on cases that should answer or clarify without side effects.
+- failure counts split into missing tool, unexpected tool, wrong tool, multiple tools, invalid
+  arguments, and wrong arguments.
 
 It does not measure response wording or whether a database operation succeeds. Ownership, amount,
 idempotency, and audit behavior are covered separately by integration tests.
@@ -47,6 +49,10 @@ On 2026-10-23, `deepseek-v4-flash` produced the following first-turn result:
 | Tool-case end-to-end accuracy | 0.818 (9/11) |
 | Argument accuracy given correct tool | 1.000 (9/9) |
 | No-tool accuracy | 0.889 (8/9) |
+
+Failure taxonomy: `wrong_tool=2`, `unexpected_tool=1`. This is more actionable than a single
+accuracy number: the baseline never omitted a required tool in this set, but confused two explicit
+refund actions with the read-only order tool and called a tool once when it should have clarified.
 
 The three selection failures are retained in the result file: two explicit refund requests selected
 the read tool instead of the refund tool, and one incomplete refund request called the read tool

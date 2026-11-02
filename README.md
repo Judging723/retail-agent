@@ -7,8 +7,9 @@
 
 - 使用 FastAPI 提供 HTTP API
 - 使用 MySQL、SQLAlchemy 和 Alembic 保存客户、会话、消息、订单、物流与退款
+- 使用 Argon2 保存密码哈希并通过 JWT 认证客户，所有会话查询均绑定当前登录客户
 - 通过统一的 OpenAI 兼容客户端调用 DeepSeek 或本地 vLLM 模型
-- 通过 SSE 流式返回模型内容，并保存多轮对话历史
+- 通过 SSE 逐段返回模型生成内容，并保存多轮对话历史
 - 使用 1073 条公开真实购物对话案例进行 BM25 + Milvus 混合 RAG，并返回来源、许可和数据版本
 - 在独立知识流水线中实现数据下载转换、BGE 中文向量检索、Milvus 持久化和固定离线评测
 - 提供 Vue 3 聊天页面，展示多轮消息和知识来源
@@ -23,6 +24,8 @@
 - 对知识库不存在的平台政策使用确定性闸门，避免模型编造期限、金额或承诺
 - 为请求生成或透传 Request ID，并记录请求状态与耗时
 - 对未处理异常返回不泄露内部信息的统一错误响应
+- 启动时预热 RAG，并在检索故障时降级为空上下文；通过 `/ready` 区分存活、就绪和降级状态
+- 提供 Docker Compose `app` profile，串联知识索引、数据库迁移、FastAPI、Nginx 与 Vue
 - 使用自动化测试、前端生产构建和 GitHub Actions 验证核心流程
 
 
@@ -31,7 +34,7 @@
 ```text
 客户端
   ↓
-FastAPI Router
+JWT 认证 → FastAPI Router
   ↓
 ConversationService
   ├── SQLAlchemy → MySQL
@@ -42,7 +45,7 @@ ConversationService
         └── request_refund → 权限与金额规则 → 幂等写入 → 审计日志
 ```
 
-在线应用刻意只保留三层：
+在线应用刻意只保留四层：
 
 - Router：接收请求并返回响应
 - ConversationService：组织创建会话、构造上下文和保存消息
@@ -54,12 +57,17 @@ ConversationService
 | 方法 | 路径 | 作用 |
 | --- | --- | --- |
 | `GET` | `/api/v1/health` | 健康检查 |
-| `POST` | `/api/v1/conversations` | 创建会话 |
+| `GET` | `/api/v1/ready` | 数据库与 RAG 就绪/降级状态 |
+| `POST` | `/api/v1/auth/register` | 注册客户并获取访问令牌 |
+| `POST` | `/api/v1/auth/login` | 登录并获取访问令牌 |
+| `GET` | `/api/v1/auth/me` | 获取当前登录客户 |
+| `POST` | `/api/v1/conversations` | 为当前登录客户创建会话 |
 | `POST` | `/api/v1/conversations/{conversation_no}/chat` | 发送消息并获取模型回复 |
 | `POST` | `/api/v1/conversations/{conversation_no}/chat/stream` | 通过 SSE 流式获取模型回复 |
 | `GET` | `/api/v1/conversations/{conversation_no}` | 获取会话历史 |
 
 启动服务后可访问 `http://127.0.0.1:8000/docs` 查看交互式 API 文档。
+除健康检查、注册和登录外，在线接口均需发送 `Authorization: Bearer <token>`。
 聊天接口支持 `Idempotency-Key` 请求头；涉及退款写操作时，失败重试必须复用同一个值。
 
 ## 本地运行
@@ -96,12 +104,24 @@ cp .env.example .env
 编辑 `customer-service-app/backend/.env`，让数据库密码与 `infra/.env` 保持一致。可选择云端
 DeepSeek 或本地 vLLM，两者共用同一个客户端。
 
+先生成本地 JWT 密钥并填入 `.env`：
+
+```bash
+openssl rand -hex 32
+```
+
+```ini
+RETAIL_JWT_SECRET=粘贴上一步生成的随机字符串
+```
+
 DeepSeek 配置示例：
 
 ```ini
 RETAIL_LLM_API_BASE=https://api.deepseek.com
 RETAIL_LLM_API_KEY=你的密钥
 RETAIL_LLM_MODEL=deepseek-flash
+RETAIL_LLM_TIMEOUT_SECONDS=60
+RETAIL_LLM_MAX_RETRIES=1
 ```
 
 本地 vLLM 配置示例：
@@ -113,6 +133,7 @@ RETAIL_LLM_MODEL=retail-agent
 ```
 
 `.env` 已被 Git 忽略，不要把 API Key 提交到仓库。
+从旧版本迁移的客户没有密码哈希，不能直接登录；本地演示时请注册一个新的客户编号。
 
 ### 4. 安装依赖并迁移数据库
 
@@ -148,6 +169,29 @@ npm test
 npm run build
 ```
 
+## Docker Compose 完整栈
+
+只执行 `docker compose up` 时仍只启动 MySQL，方便日常开发；`app` profile 会依次建立 Milvus Lite
+索引、执行 Alembic 迁移、启动 FastAPI，并用 Nginx 托管 Vue 和反向代理 SSE：
+
+```bash
+cp infra/.env.example infra/.env
+# 编辑 infra/.env，至少替换 RETAIL_JWT_SECRET，并配置 RETAIL_LLM_API_KEY
+docker compose --env-file infra/.env -f infra/compose.yaml --profile app up --build
+```
+
+首次启动需要下载固定版本的 BGE Embedding 与 Reranker，耗时取决于网络；模型缓存、向量库和 MySQL
+数据分别保存在具名 volume 中，后续启动会复用。启动完成后访问 `http://127.0.0.1:5173`，后端文档为
+`http://127.0.0.1:8000/docs`。停止服务：
+
+```bash
+docker compose --env-file infra/.env -f infra/compose.yaml --profile app down
+```
+
+如果 vLLM 与 Docker 运行在同一台主机，可将接口地址设置为
+`http://host.docker.internal:8001/v1`；当前两台设备不在可互通网络时，使用 DeepSeek API，GPU 服务仍
+按 `model-serving/README.md` 独立运行。
+
 ## 流式响应协议
 
 Vue 使用 `fetch` 读取 `/chat/stream` 返回的 Server-Sent Events。一次完整回复依次包含：
@@ -158,11 +202,35 @@ sources → delta... → done
 ```
 
 - `sources`：本轮检索到的知识来源。
-- `delta`：本轮 Agent 的最终文本。当前版本要先完成工具调用，所以一次性发送完整回复；后续再实现工具调用过程中的 token 级流式聚合。
+- `delta`：模型生成的文本增量，前端收到后立即追加显示。OpenAI 兼容客户端会在同一次流式
+  请求中重组工具调用参数，Agent 执行工具后继续接收最终回答，不会为了流式展示重复请求模型。
+  确定性的政策兜底不调用模型，因此只发送一个完整 `delta`。
 - `done`：完整回复已写入数据库，携带正式消息编号。
 - `error`：流式生成失败；失败时用户消息和助手消息都不会写入数据库。
 
 原有 `/chat` JSON 接口继续保留，用作非流式调用和回归基线。
+
+## 在线可观测性
+
+流式接口使用独立的 `app.chat_stream` 结构化日志，记录：
+
+- `ttft_ms`：从接口开始处理到第一个文本增量的时间，包含鉴权、数据库读取和 RAG；
+- `total_ms`：完整流结束所需时间；
+- `delta_count` 和 `character_count`：本次输出的增量数与字符数；
+- `status`：`completed`、`model_error`、`incomplete` 或 `interrupted`。
+
+没有产生文本时 `ttft_ms=-1`。普通请求日志只能反映 HTTP 响应建立时间，分析流式体验时应以
+`app.chat_stream` 为准。工具执行使用 `app.agent` 日志记录工具名、成功或拒绝状态、错误码和耗时，
+但不会记录订单号、退款原因等业务参数。
+
+离线 Agent 评测还会把失败划分为 `missing_tool`、`unexpected_tool`、`wrong_tool`、
+`multiple_tools`、`invalid_arguments` 和 `wrong_arguments`，避免只看一个总准确率而不知道应该
+修改提示词、参数 Schema 还是业务工具。
+
+应用启动时默认预热 Embedding、Milvus 和 Reranker，避免首位用户承担模型初始化时间。RAG 初始化
+或在线检索失败时，运行时会关闭异常客户端、标记为 `degraded` 并返回空知识上下文；聊天、政策闸门
+和订单工具仍可继续工作。`/health` 只表示进程存活，`/ready` 会实际执行数据库查询并报告 RAG 为
+`ready`、`lazy` 或 `degraded`。测试环境不预热，可用 `RETAIL_RAG_WARMUP_ENABLED=false` 显式关闭。
 
 ## 目录说明
 
@@ -173,7 +241,7 @@ customer-service-app/
 │   ├── app/              # 仅包含在线请求所需的运行时代码
 │   │   ├── agents/       # Agent 循环、工具定义、参数校验和受权执行
 │   │   ├── api/          # HTTP 路由和依赖
-│   │   ├── core/         # 配置、数据库连接和异常响应
+│   │   ├── core/         # 配置、数据库连接、JWT 和密码安全
 │   │   ├── llm/          # OpenAI 兼容模型客户端
 │   │   ├── middleware/   # 请求日志等通用请求处理
 │   │   ├── models/       # SQLAlchemy 数据表映射
@@ -181,7 +249,7 @@ customer-service-app/
 │   │   ├── schemas/      # 请求和响应结构
 │   │   ├── policies.py   # 不依赖模型的业务边界规则
 │   │   ├── prompts.py    # 在线与评测共享的系统提示词
-│   │   └── services/     # 聊天业务流程编排
+│   │   └── services/     # 认证和聊天业务流程编排
 │   ├── benchmarks/       # Agent 离线评测代码、固定用例和版本化结果
 │   ├── migrations/       # Alembic 数据库迁移
 │   ├── scripts/          # 数据库检查与 Agent 评测入口
@@ -216,7 +284,8 @@ infra/                 # 本地 MySQL Docker Compose
 这些内容是真实购物对话样本，但不是权威平台业务规则。系统只用它们学习“信息不足时如何澄清”，
 不能据此回答退款期限、物流状态、赔付条件或法律问题。署名和采用决定见
 [第三方数据说明](customer-service-app/backend/data/THIRD_PARTY_DATA.md)与
-[公开数据集调研](docs/DATASETS.md)。
+[数据集登记与采用规则](knowledge-pipeline/data/README.md)及
+[机器可读登记表](knowledge-pipeline/data/dataset_registry.json)。
 
 ## Milvus 向量库
 
@@ -247,13 +316,20 @@ python scripts/search_milvus.py "我想买一件防晒衣，帮我推荐一下"
 避免把“Python 装饰器”错误匹配成“黑板装饰墙贴”。固定评测结果为 Hit@3 `1.000`、MRR
 `1.000`、负例准确率 `1.000`；这些数字只描述当前 12 条教育性测试集。
 
-混合检索之后只把前 8 个候选交给 `BAAI/bge-reranker-v2-m3` CrossEncoder 重排。模型与本地
+混合检索之后默认只把前 4 个候选交给 `BAAI/bge-reranker-v2-m3` CrossEncoder 重排。模型与本地
 Travel Agent 项目保持一致，并固定到 commit `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`，
 避免上游更新改变实验结果。Reranker 会同时阅读问题和完整候选文本，适合区分“同样是手机，
 但用户要 512G 赠品还是游戏续航”这类难负例。在 11 条独立难负例上，重排前后的 Hit@3
 都是 `1.000`，MRR 从 `0.864` 提升到 `1.000`；代价是比向量检索慢，因此不会对 1073 条
-文档逐条打分。可用
+文档逐条打分。在 Apple M4 本地复现实验中，候选数从 8 减至 4 后，11 条查询的重排检索总耗时
+从 `7.024s` 降至 `3.746s`（减少 `46.7%`），固定评测指标不变。该小样本结果用于选择教学项目的
+默认值，不代表生产环境延迟承诺。可用
 `RETAIL_RAG_RERANKER_ENABLED=false` 关闭，并用 `RETAIL_RAG_RERANKER_CANDIDATES` 调整候选数。
+
+每次在线检索会输出一条 `rag_search_finished` 日志，分别记录 Embedding、Milvus、BM25、RRF、
+Reranker 和总耗时，以及各阶段候选数量。日志只记录查询字符数，不记录原始问题，避免把订单号等
+用户内容写入日志。一次热查询实测中，Milvus 为 `2.74ms`，Reranker 为 `479.03ms`，因此本轮优先
+缩减重排候选数，而没有替换并非瓶颈的 Milvus。
 
 ## 启动前端
 
@@ -266,6 +342,24 @@ npm run dev
 ```
 
 访问 `http://127.0.0.1:5173`。Vite 会将 `/api` 请求代理到本机 `8000` 端口，因此本地开发不需要额外配置 CORS。
+
+页面先注册或登录，再用访问令牌创建会话。客户编号不再由创建会话接口接收，后端只信任 JWT 中的
+身份并在数据库查询中追加 `customer_id`，因此知道别人的会话编号也无法读取其聊天记录。
+
+## 关键技术选型
+
+- **JWT + Argon2**：当前只有客户登录和会话隔离，不需要引入完整 OAuth 服务；PyJWT 边界清晰，
+  Argon2 适合密码哈希。若未来接入企业 SSO、多端注销或第三方授权，再替换为 OIDC/Keycloak。
+- **FastAPI + SQLAlchemy Async**：与项目的 Python/模型生态一致，接口类型和异步 I/O 支持较好；
+  如果团队以 Java 为主且业务规则远多于 AI 流程，Spring Boot 会更合适。
+- **MySQL**：订单、退款和审计数据需要事务及约束，关系数据库比 MongoDB 更匹配；若从零部署并
+  希望同时使用 `pgvector` 简化组件数量，可改为 PostgreSQL，但当前已有 Milvus，不值得只为统一而迁移。
+- **Milvus Lite → Milvus Standalone**：本地文件模式便于学习，服务端模式适合数据增长和并发，二者
+  共用客户端接口；知识量长期只有几千片段时，继续使用 Lite 或改用 pgvector 都比维护集群更实际。
+- **Vue 3 + Vite**：页面较轻、上手成本低、构建快；若需要 SSR、内容站或大型 React 团队协作，
+  再考虑 Nuxt/Next.js。当前没有这些需求。
+- **自定义 Function Calling Agent**：只有订单查询和退款两个工具，显式循环更容易解释与测试；
+  只有出现多分支状态图、人工审批和长任务恢复时，才值得引入 LangGraph。
 
 ## 订单查询 Agent
 

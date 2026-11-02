@@ -23,7 +23,7 @@ contaminated.
 - Fusion: Reciprocal Rank Fusion with `k=60`
 - Reranker: `BAAI/bge-reranker-v2-m3`
 - Reranker revision: `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`
-- Reranker candidates: 8
+- Online reranker candidates: 4
 
 ## Results
 
@@ -62,6 +62,21 @@ men's sun-protection dialogue each ranked second behind another document about t
 The pinned BGE reranker moved all three to rank one without losing any top-three hit. These metrics
 describe 11 manually reviewed hard-positive cases, not a general production-quality guarantee.
 
+### Candidate-count latency experiment
+
+On 2026-11-01, the same 11 cases were run on an Apple M4 with model loading excluded from the
+timed region. Each row is one local run, so the numbers are useful for choosing this project's
+default rather than making a production latency claim.
+
+| Reranker candidates | Hit@3 | MRR | Reranked search runtime (11 queries) |
+| ---: | ---: | ---: | ---: |
+| 8 | 1.000 | 1.000 | 7.024 s |
+| 4 | 1.000 | 1.000 | 3.746 s |
+
+Reducing the candidate count to four preserved the fixed-set metrics and reduced total runtime by
+46.7%, so four is the online default. Re-run this comparison after changing the corpus, embedding
+model, reranker, chunking strategy, or hardware.
+
 ## Reproduce
 
 From the `knowledge-pipeline` directory:
@@ -71,6 +86,7 @@ python scripts/evaluate_semantic.py
 python scripts/calibrate_milvus_threshold.py
 python scripts/evaluate_online_hybrid.py
 python scripts/evaluate_online_reranker.py
+python scripts/evaluate_online_reranker.py --candidates 8
 ```
 
 The first run downloads the pinned public embedding and reranker models into the local Hugging Face

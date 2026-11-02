@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import AsyncIterator, Sequence
 from decimal import Decimal
 from uuid import uuid4
@@ -11,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import OrderToolExecutor
 from app.api.dependencies import get_llm_client
-from app.llm import AssistantTurn, ChatMessage, FunctionToolCall, ToolDefinition
+from app.llm import (
+    AssistantStreamEvent,
+    AssistantTurn,
+    ChatMessage,
+    FunctionToolCall,
+    ToolDefinition,
+)
 from app.models import (
     Conversation,
     Customer,
@@ -83,19 +90,32 @@ class ScriptedOrderLLM:
             yield ""
         raise AssertionError("This test does not use streaming")
 
+    async def stream_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AsyncIterator[AssistantStreamEvent]:
+        turn = await self.complete_with_tools(messages, tools)
+        if turn.content:
+            midpoint = max(1, len(turn.content) // 2)
+            for chunk in [turn.content[:midpoint], turn.content[midpoint:]]:
+                if chunk:
+                    yield AssistantStreamEvent(content_delta=chunk)
+        yield AssistantStreamEvent(completed_turn=turn)
+
 
 async def test_agent_queries_current_customers_order_and_audits(
     application: FastAPI,
     api_client: AsyncClient,
     db_session: AsyncSession,
+    register_customer,
+    caplog,
 ) -> None:
     suffix = uuid4().hex[:12]
     customer_no = f"CUST-AGENT-{suffix}"
     order_no = f"ORDER-{suffix}"
-    create_response = await api_client.post(
-        "/api/v1/conversations",
-        json={"customer_no": customer_no, "display_name": "Agent 测试用户"},
-    )
+    await register_customer(customer_no, "Agent 测试用户")
+    create_response = await api_client.post("/api/v1/conversations")
     conversation_no = create_response.json()["conversation_no"]
 
     async with db_session.begin():
@@ -121,19 +141,23 @@ async def test_agent_queries_current_customers_order_and_audits(
     fake_llm = ScriptedOrderLLM(order_no)
     application.dependency_overrides[get_llm_client] = lambda: fake_llm
     try:
-        response = await api_client.post(
-            f"/api/v1/conversations/{conversation_no}/chat/stream",
-            json={"content": f"帮我查一下订单 {order_no}"},
-        )
+        with caplog.at_level(logging.INFO, logger="app.agent"):
+            response = await api_client.post(
+                f"/api/v1/conversations/{conversation_no}/chat/stream",
+                json={"content": f"帮我查一下订单 {order_no}"},
+            )
     finally:
         application.dependency_overrides.pop(get_llm_client, None)
 
     assert response.status_code == 200
     events = parse_sse_events(response.text)
-    assert [event for event, _ in events] == ["sources", "delta", "done"]
+    assert [event for event, _ in events] == ["sources", "delta", "delta", "done"]
     assert events[-1][1]["content"] == (f"订单 {order_no} 当前为 shipped，物流状态为 in_transit。")
     assert fake_llm.tool_result is not None
     assert fake_llm.tool_result["order"]["shipment"]["carrier"] == "顺丰速运"
+    assert "tool_name=get_order_status" in caplog.text
+    assert "status=success" in caplog.text
+    assert "error_code=none" in caplog.text
 
     async with db_session.begin():
         audit = await db_session.scalar(
@@ -149,14 +173,14 @@ async def test_agent_cannot_query_another_customers_order(
     application: FastAPI,
     api_client: AsyncClient,
     db_session: AsyncSession,
+    register_customer,
+    caplog,
 ) -> None:
     suffix = uuid4().hex[:12]
     own_customer_no = f"CUST-OWN-{suffix}"
     foreign_order_no = f"ORDER-FOREIGN-{suffix}"
-    create_response = await api_client.post(
-        "/api/v1/conversations",
-        json={"customer_no": own_customer_no, "display_name": "当前客户"},
-    )
+    await register_customer(own_customer_no, "当前客户")
+    create_response = await api_client.post("/api/v1/conversations")
     conversation_no = create_response.json()["conversation_no"]
 
     async with db_session.begin():
@@ -179,10 +203,11 @@ async def test_agent_cannot_query_another_customers_order(
     fake_llm = ScriptedOrderLLM(foreign_order_no)
     application.dependency_overrides[get_llm_client] = lambda: fake_llm
     try:
-        response = await api_client.post(
-            f"/api/v1/conversations/{conversation_no}/chat",
-            json={"content": f"查询订单 {foreign_order_no}"},
-        )
+        with caplog.at_level(logging.INFO, logger="app.agent"):
+            response = await api_client.post(
+                f"/api/v1/conversations/{conversation_no}/chat",
+                json={"content": f"查询订单 {foreign_order_no}"},
+            )
     finally:
         application.dependency_overrides.pop(get_llm_client, None)
 
@@ -195,6 +220,8 @@ async def test_agent_cannot_query_another_customers_order(
             "message": "当前客户名下未找到该订单，请核对订单号。",
         },
     }
+    assert "status=rejected" in caplog.text
+    assert "error_code=order_not_found" in caplog.text
 
     async with db_session.begin():
         conversation = await db_session.scalar(

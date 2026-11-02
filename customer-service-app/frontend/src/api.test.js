@@ -14,6 +14,7 @@ test('streamChatMessage parses SSE events across response chunks', async () => {
   globalThis.fetch = async (url, options) => {
     assert.equal(url, '/api/v1/conversations/CONV-001/chat/stream')
     assert.equal(options.method, 'POST')
+    assert.equal(options.headers.Authorization, 'Bearer test-access-token')
     assert.equal(options.headers['Idempotency-Key'], 'request-001')
     assert.deepEqual(JSON.parse(options.body), { content: '你好' })
 
@@ -38,6 +39,7 @@ test('streamChatMessage parses SSE events across response chunks', async () => {
       'CONV-001',
       '你好',
       'request-001',
+      'test-access-token',
     )) {
       events.push(event)
     }
@@ -66,6 +68,7 @@ test('streamChatMessage exposes an HTTP error message', async () => {
         'missing',
         '你好',
         'request-002',
+        'test-access-token',
       )) {
         // The HTTP error is raised before any event is produced.
       }

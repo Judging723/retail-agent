@@ -16,6 +16,8 @@ dependencies = [
     "cryptography>=50.0.2,<51",
     "alembic>=1.20,<2",
     "openai",
+    "PyJWT>=2.10,<3",
+    "pwdlib[argon2]>=0.3,<1",
     "pymilvus[milvus-lite]>=3.0,<3.1",
     "sentence-transformers>=6.1,<7",
 ]

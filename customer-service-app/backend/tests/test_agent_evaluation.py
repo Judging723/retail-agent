@@ -8,8 +8,10 @@ from app.prompts import DEFAULT_SYSTEM_PROMPT
 from benchmarks import (
     AgentEvalCase,
     AgentEvalResult,
+    classify_agent_failure,
     evaluate_agent_turn,
     load_agent_cases,
+    summarize_agent_failures,
     summarize_agent_results,
 )
 
@@ -131,3 +133,45 @@ def test_versioned_baseline_matches_cases_prompt_tools_and_metrics() -> None:
     )
     serialized_tools = json.dumps(CUSTOMER_SERVICE_TOOLS, ensure_ascii=False, sort_keys=True)
     assert payload["tools_sha256"] == hashlib.sha256(serialized_tools.encode("utf-8")).hexdigest()
+
+
+def test_agent_failure_taxonomy_distinguishes_failure_causes() -> None:
+    results = [
+        AgentEvalResult(
+            case_id="missing",
+            category="order_query",
+            expected_tool="get_order_status",
+            predicted_tools=(),
+            tool_selection_correct=False,
+            arguments_correct=False,
+            predicted_arguments=None,
+            error=None,
+        ),
+        AgentEvalResult(
+            case_id="unexpected",
+            category="no_tool",
+            expected_tool=None,
+            predicted_tools=("get_order_status",),
+            tool_selection_correct=False,
+            arguments_correct=None,
+            predicted_arguments=None,
+            error=None,
+        ),
+        AgentEvalResult(
+            case_id="invalid_arguments",
+            category="refund_request",
+            expected_tool="request_refund",
+            predicted_tools=("request_refund",),
+            tool_selection_correct=True,
+            arguments_correct=False,
+            predicted_arguments=None,
+            error="invalid amount",
+        ),
+    ]
+
+    assert classify_agent_failure(results[0]) == "missing_tool"
+    assert summarize_agent_failures(results) == {
+        "invalid_arguments": 1,
+        "missing_tool": 1,
+        "unexpected_tool": 1,
+    }

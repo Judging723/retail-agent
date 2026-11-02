@@ -172,9 +172,33 @@ h1 {
 
 .start-form {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: repeat(3, 1fr) auto;
   gap: 14px;
   align-items: end;
+}
+
+.auth-mode {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px;
+  border-radius: 12px;
+  background: #edf3ee;
+}
+
+.auth-mode button {
+  padding: 7px 18px;
+  border: 0;
+  border-radius: 9px;
+  color: #617067;
+  background: transparent;
+  font-weight: 700;
+}
+
+.auth-mode button.active {
+  color: #fff;
+  background: #153c2e;
 }
 
 label {

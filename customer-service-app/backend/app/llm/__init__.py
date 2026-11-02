@@ -1,4 +1,5 @@
 from app.llm.openai_compatible import (
+    AssistantStreamEvent,
     AssistantTurn,
     ChatMessage,
     FunctionToolCall,
@@ -9,6 +10,7 @@ from app.llm.openai_compatible import (
 )
 
 __all__ = [
+    "AssistantStreamEvent",
     "AssistantTurn",
     "ChatMessage",
     "FunctionToolCall",

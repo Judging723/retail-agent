@@ -1,7 +1,9 @@
+import logging
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Protocol
 
 from app.rag.bm25 import DEFAULT_KNOWLEDGE_PATH, BM25Retriever, BM25SearchResult
@@ -30,6 +32,7 @@ OUTPUT_FIELDS = [
     "source_url",
     "license",
 ]
+logger = logging.getLogger("app.rag")
 
 
 class QueryEmbedder(Protocol):
@@ -73,6 +76,19 @@ class RetrievedDocument:
     score: float
 
 
+@dataclass(slots=True)
+class RetrievalMetrics:
+    embedding_ms: float = 0
+    milvus_ms: float = 0
+    bm25_ms: float = 0
+    rrf_ms: float = 0
+    reranker_ms: float = 0
+    vector_candidates: int = 0
+    bm25_candidates: int = 0
+    fused_candidates: int = 0
+    returned_results: int = 0
+
+
 class KnowledgeRetriever:
     """Search the Milvus collection built by the offline knowledge pipeline."""
 
@@ -85,7 +101,7 @@ class KnowledgeRetriever:
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
         lexical_retriever: BM25Retriever | None = None,
         reranker: PairReranker | None = None,
-        rerank_candidates: int = 8,
+        rerank_candidates: int = 4,
         rrf_k: int = 60,
     ) -> None:
         if not 0 <= min_score <= 1:
@@ -113,7 +129,7 @@ class KnowledgeRetriever:
         min_score: float = DEFAULT_RELEVANCE_THRESHOLD,
         knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH,
         reranker: PairReranker | None = None,
-        rerank_candidates: int = 8,
+        rerank_candidates: int = 4,
     ) -> "KnowledgeRetriever":
         from pymilvus import MilvusClient
 
@@ -136,18 +152,58 @@ class KnowledgeRetriever:
         if limit <= 0:
             raise ValueError("limit must be greater than zero")
 
-        if self._lexical_retriever is None and self._reranker is None:
-            return self._search_vectors(query, limit=limit)
+        metrics = RetrievalMetrics()
+        started_at = perf_counter()
+        status = "error"
+        candidate_limit = limit
 
-        if self._reranker is None:
-            candidate_limit = max(8, limit * 4)
-        else:
-            candidate_limit = max(self._rerank_candidates, limit)
+        try:
+            if self._lexical_retriever is None and self._reranker is None:
+                results = self._search_vectors(query, limit=limit, metrics=metrics)
+                metrics.fused_candidates = len(results)
+            else:
+                if self._reranker is None:
+                    candidate_limit = max(8, limit * 4)
+                else:
+                    candidate_limit = max(self._rerank_candidates, limit)
 
-        candidates = self.retrieve_candidates(query, limit=candidate_limit)
-        if self._reranker is None:
-            return candidates[:limit]
-        return self._rerank(query, candidates, limit=limit)
+                candidates = self._retrieve_candidates_with_metrics(
+                    query,
+                    limit=candidate_limit,
+                    metrics=metrics,
+                )
+                if self._reranker is None:
+                    results = candidates[:limit]
+                else:
+                    reranker_started_at = perf_counter()
+                    results = self._rerank(query, candidates, limit=limit)
+                    metrics.reranker_ms = (perf_counter() - reranker_started_at) * 1000
+
+            metrics.returned_results = len(results)
+            status = "completed"
+            return results
+        finally:
+            total_ms = (perf_counter() - started_at) * 1000
+            logger.info(
+                "rag_search_finished status=%s query_chars=%d requested_limit=%d "
+                "candidate_limit=%d embedding_ms=%.2f milvus_ms=%.2f bm25_ms=%.2f "
+                "rrf_ms=%.2f reranker_ms=%.2f total_ms=%.2f vector_candidates=%d "
+                "bm25_candidates=%d fused_candidates=%d returned_results=%d",
+                status,
+                len(query),
+                limit,
+                candidate_limit,
+                metrics.embedding_ms,
+                metrics.milvus_ms,
+                metrics.bm25_ms,
+                metrics.rrf_ms,
+                metrics.reranker_ms,
+                total_ms,
+                metrics.vector_candidates,
+                metrics.bm25_candidates,
+                metrics.fused_candidates,
+                metrics.returned_results,
+            )
 
     def retrieve_candidates(
         self,
@@ -162,20 +218,53 @@ class KnowledgeRetriever:
         if limit <= 0:
             raise ValueError("limit must be greater than zero")
 
-        if self._lexical_retriever is None:
-            return self._search_vectors(query, limit=limit)
-
-        vector_results = self._search_vectors(query, limit=limit)
-        lexical_results = self._lexical_retriever.search(query, limit=limit)
-        return self._fuse_results(vector_results, lexical_results, limit=limit)
+        return self._retrieve_candidates_with_metrics(
+            query,
+            limit=limit,
+            metrics=RetrievalMetrics(),
+        )
 
     def close(self) -> None:
         close = getattr(self._client, "close", None)
         if callable(close):
             close()
 
-    def _search_vectors(self, query: str, *, limit: int) -> list[RetrievedDocument]:
+    def _retrieve_candidates_with_metrics(
+        self,
+        query: str,
+        *,
+        limit: int,
+        metrics: RetrievalMetrics,
+    ) -> list[RetrievedDocument]:
+        vector_results = self._search_vectors(query, limit=limit, metrics=metrics)
+        if self._lexical_retriever is None:
+            metrics.fused_candidates = len(vector_results)
+            return vector_results
+
+        bm25_started_at = perf_counter()
+        lexical_results = self._lexical_retriever.search(query, limit=limit)
+        metrics.bm25_ms = (perf_counter() - bm25_started_at) * 1000
+        metrics.bm25_candidates = len(lexical_results)
+
+        rrf_started_at = perf_counter()
+        fused_results = self._fuse_results(vector_results, lexical_results, limit=limit)
+        metrics.rrf_ms = (perf_counter() - rrf_started_at) * 1000
+        metrics.fused_candidates = len(fused_results)
+        return fused_results
+
+    def _search_vectors(
+        self,
+        query: str,
+        *,
+        limit: int,
+        metrics: RetrievalMetrics | None = None,
+    ) -> list[RetrievedDocument]:
+        embedding_started_at = perf_counter()
         query_embedding = self._embedder.encode_queries([query])[0]
+        if metrics is not None:
+            metrics.embedding_ms = (perf_counter() - embedding_started_at) * 1000
+
+        milvus_started_at = perf_counter()
         response = self._client.search(
             collection_name=self._collection_name,
             data=[query_embedding],
@@ -183,6 +272,8 @@ class KnowledgeRetriever:
             output_fields=OUTPUT_FIELDS,
             search_params={"metric_type": "COSINE"},
         )
+        if metrics is not None:
+            metrics.milvus_ms = (perf_counter() - milvus_started_at) * 1000
 
         results: list[RetrievedDocument] = []
         seen_source_ids: set[str] = set()
@@ -213,6 +304,8 @@ class KnowledgeRetriever:
             if len(results) == limit:
                 break
 
+        if metrics is not None:
+            metrics.vector_candidates = len(results)
         return results
 
     def _rerank(

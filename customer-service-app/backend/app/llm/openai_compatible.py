@@ -2,12 +2,7 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from openai import (
-    APIConnectionError,
-    AsyncOpenAI,
-    InternalServerError,
-    RateLimitError,
-)
+from openai import AsyncOpenAI, OpenAIError
 
 ChatMessage = dict[str, Any]
 ToolDefinition = dict[str, Any]
@@ -26,6 +21,12 @@ class AssistantTurn:
     tool_calls: tuple[FunctionToolCall, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class AssistantStreamEvent:
+    content_delta: str | None = None
+    completed_turn: AssistantTurn | None = None
+
+
 class LLMUnavailableError(RuntimeError):
     """The configured model service cannot return a usable answer."""
 
@@ -38,6 +39,12 @@ class LLMClient(Protocol):
         messages: Sequence[ChatMessage],
         tools: Sequence[ToolDefinition],
     ) -> AssistantTurn: ...
+
+    def stream_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AsyncIterator[AssistantStreamEvent]: ...
 
     def stream(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]: ...
 
@@ -61,11 +68,7 @@ class OpenAICompatibleLLMClient:
                 model=self._model,
                 messages=list(messages),
             )
-        except (
-            APIConnectionError,
-            RateLimitError,
-            InternalServerError,
-        ) as exc:
+        except OpenAIError as exc:
             raise LLMUnavailableError("Model service is unavailable") from exc
 
         if not completion.choices:
@@ -91,11 +94,7 @@ class OpenAICompatibleLLMClient:
                 tools=list(tools),
                 tool_choice="auto",
             )
-        except (
-            APIConnectionError,
-            RateLimitError,
-            InternalServerError,
-        ) as exc:
+        except OpenAIError as exc:
             raise LLMUnavailableError("Model service is unavailable") from exc
 
         if not completion.choices:
@@ -142,12 +141,75 @@ class OpenAICompatibleLLMClient:
 
                 has_text = has_text or bool(content.strip())
                 yield content
-        except (
-            APIConnectionError,
-            RateLimitError,
-            InternalServerError,
-        ) as exc:
+        except OpenAIError as exc:
             raise LLMUnavailableError("Model service is unavailable") from exc
 
         if not has_text:
             raise LLMUnavailableError("Model service returned an empty response")
+
+    async def stream_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AsyncIterator[AssistantStreamEvent]:
+        content_parts: list[str] = []
+        tool_call_parts: dict[int, dict[str, str]] = {}
+
+        try:
+            completion_stream = await self._client.chat.completions.create(
+                model=self._model,
+                messages=list(messages),
+                tools=list(tools),
+                tool_choice="auto",
+                stream=True,
+            )
+
+            async for chunk in completion_stream:
+                if not chunk.choices:
+                    continue
+
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                if isinstance(content, str) and content:
+                    content_parts.append(content)
+                    yield AssistantStreamEvent(content_delta=content)
+
+                for tool_call_delta in getattr(delta, "tool_calls", None) or []:
+                    index = tool_call_delta.index
+                    parts = tool_call_parts.setdefault(
+                        index,
+                        {"id": "", "name": "", "arguments": ""},
+                    )
+                    if tool_call_delta.id:
+                        parts["id"] += tool_call_delta.id
+
+                    function = tool_call_delta.function
+                    if function is not None:
+                        if function.name:
+                            parts["name"] += function.name
+                        if function.arguments:
+                            parts["arguments"] += function.arguments
+        except OpenAIError as exc:
+            raise LLMUnavailableError("Model service is unavailable") from exc
+
+        tool_calls = tuple(
+            FunctionToolCall(
+                id=parts["id"],
+                name=parts["name"],
+                arguments=parts["arguments"],
+            )
+            for _, parts in sorted(tool_call_parts.items())
+        )
+        content = "".join(content_parts)
+
+        if any(not tool_call.id or not tool_call.name for tool_call in tool_calls):
+            raise LLMUnavailableError("Model service returned an incomplete tool call")
+        if not content.strip() and not tool_calls:
+            raise LLMUnavailableError("Model service returned an empty response")
+
+        yield AssistantStreamEvent(
+            completed_turn=AssistantTurn(
+                content=content.strip() or None,
+                tool_calls=tool_calls,
+            )
+        )

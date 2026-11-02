@@ -9,9 +9,12 @@ def test_default_settings(monkeypatch) -> None:
     assert settings.llm_api_base == "https://api.deepseek.com"
     assert settings.llm_model == "deepseek-flash"
     assert settings.llm_api_key.get_secret_value() == ""
+    assert settings.llm_timeout_seconds == 60
+    assert settings.llm_max_retries == 1
     assert settings.rag_min_score == 0.52
     assert settings.rag_reranker_enabled is True
-    assert settings.rag_reranker_candidates == 8
+    assert settings.rag_reranker_candidates == 4
+    assert settings.rag_warmup_enabled is True
 
 
 def test_llm_settings_can_be_overridden(monkeypatch) -> None:

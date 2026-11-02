@@ -14,6 +14,7 @@ def register_request_logging(application: FastAPI) -> None:
         request.state.request_id = request_id
 
         started_at = perf_counter()
+        request.state.started_at = started_at
 
         try:
             response = await call_next(request)

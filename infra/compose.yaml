@@ -23,5 +23,88 @@ services:
       retries: 20
       start_period: 20s
 
+  knowledge-index:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: knowledge-pipeline/Dockerfile
+    restart: "no"
+    environment:
+      HF_HOME: /models/huggingface
+    volumes:
+      - vector_store:/workspace/knowledge-pipeline/data/vector_store
+      - huggingface_cache:/models/huggingface
+
+  migrate:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: customer-service-app/backend/Dockerfile
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment: &backend-environment
+      RETAIL_ENVIRONMENT: production
+      RETAIL_DB_HOST: mysql
+      RETAIL_DB_PORT: 3306
+      RETAIL_DB_NAME: ${MYSQL_DATABASE}
+      RETAIL_DB_USER: ${MYSQL_USER}
+      RETAIL_DB_PASSWORD: ${MYSQL_PASSWORD}
+      RETAIL_JWT_SECRET: ${RETAIL_JWT_SECRET:-development-only-change-me-at-least-32-bytes}
+      RETAIL_LLM_API_BASE: ${RETAIL_LLM_API_BASE:-https://api.deepseek.com}
+      RETAIL_LLM_API_KEY: ${RETAIL_LLM_API_KEY:-}
+      RETAIL_LLM_MODEL: ${RETAIL_LLM_MODEL:-deepseek-flash}
+      RETAIL_LLM_TIMEOUT_SECONDS: ${RETAIL_LLM_TIMEOUT_SECONDS:-60}
+      RETAIL_LLM_MAX_RETRIES: ${RETAIL_LLM_MAX_RETRIES:-1}
+      RETAIL_MILVUS_URI: /workspace/knowledge-pipeline/data/vector_store/retail_agent.db
+      RETAIL_RAG_WARMUP_ENABLED: "true"
+      HF_HOME: /models/huggingface
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: customer-service-app/backend/Dockerfile
+    restart: unless-stopped
+    environment: *backend-environment
+    ports:
+      - "8000:8000"
+    volumes:
+      - vector_store:/workspace/knowledge-pipeline/data/vector_store:ro
+      - huggingface_cache:/models/huggingface
+    depends_on:
+      knowledge-index:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 120s
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: customer-service-app/frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   mysql_data:
+  vector_store:
+  huggingface_cache:

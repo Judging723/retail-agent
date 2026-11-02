@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from collections.abc import AsyncIterator, Sequence
 from uuid import uuid4
 
@@ -7,7 +9,13 @@ from fastapi import FastAPI
 from httpx2 import AsyncClient
 
 from app.api.dependencies import get_llm_client
-from app.llm import AssistantTurn, ChatMessage, LLMUnavailableError, ToolDefinition
+from app.llm import (
+    AssistantStreamEvent,
+    AssistantTurn,
+    ChatMessage,
+    LLMUnavailableError,
+    ToolDefinition,
+)
 from app.policies import POLICY_FALLBACK_RESPONSE
 
 pytestmark = [
@@ -43,6 +51,20 @@ class FakeLLMClient:
             if chunk:
                 yield chunk
 
+    async def stream_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AsyncIterator[AssistantStreamEvent]:
+        self.calls.append(list(messages))
+        midpoint = max(1, len(self.response) // 2)
+        for chunk in [self.response[:midpoint], self.response[midpoint:]]:
+            if chunk:
+                yield AssistantStreamEvent(content_delta=chunk)
+        yield AssistantStreamEvent(
+            completed_turn=AssistantTurn(content=self.response, tool_calls=())
+        )
+
 
 class FailingLLMClient:
     async def chat(self, messages: Sequence[ChatMessage]) -> str:
@@ -63,6 +85,15 @@ class FailingLLMClient:
             yield ""
         raise LLMUnavailableError("模拟模型不可用")
 
+    async def stream_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+    ) -> AsyncIterator[AssistantStreamEvent]:
+        if not messages or not tools:
+            yield AssistantStreamEvent(content_delta="")
+        raise LLMUnavailableError("模拟模型不可用")
+
 
 def parse_sse_events(content: str) -> list[tuple[str, dict]]:
     events = []
@@ -77,18 +108,17 @@ def parse_sse_events(content: str) -> list[tuple[str, dict]]:
 async def test_multi_turn_chat_flow(
     application: FastAPI,
     api_client: AsyncClient,
+    register_customer,
 ) -> None:
     fake_llm = FakeLLMClient("请提供您的订单编号。")
     application.dependency_overrides[get_llm_client] = lambda: fake_llm
 
     try:
         suffix = uuid4().hex[:12]
+        customer_no = f"CUST-CHAT-{suffix}"
+        await register_customer(customer_no, "聊天测试用户")
         create_response = await api_client.post(
             "/api/v1/conversations",
-            json={
-                "customer_no": f"CUST-CHAT-{suffix}",
-                "display_name": "聊天测试用户",
-            },
         )
         assert create_response.status_code == 201
         conversation_no = create_response.json()["conversation_no"]
@@ -170,25 +200,23 @@ async def test_multi_turn_chat_flow(
 async def test_stream_chat_flow(
     application: FastAPI,
     api_client: AsyncClient,
+    register_customer,
+    caplog,
 ) -> None:
     fake_llm = FakeLLMClient("正在为您查询物流。")
     application.dependency_overrides[get_llm_client] = lambda: fake_llm
 
     try:
         suffix = uuid4().hex[:12]
-        create_response = await api_client.post(
-            "/api/v1/conversations",
-            json={
-                "customer_no": f"CUST-STREAM-{suffix}",
-                "display_name": "流式测试用户",
-            },
-        )
+        await register_customer(f"CUST-STREAM-{suffix}", "流式测试用户")
+        create_response = await api_client.post("/api/v1/conversations")
         conversation_no = create_response.json()["conversation_no"]
 
-        stream_response = await api_client.post(
-            f"/api/v1/conversations/{conversation_no}/chat/stream",
-            json={"content": "物流两天没有更新怎么办？"},
-        )
+        with caplog.at_level(logging.INFO, logger="app.chat_stream"):
+            stream_response = await api_client.post(
+                f"/api/v1/conversations/{conversation_no}/chat/stream",
+                json={"content": "物流两天没有更新怎么办？"},
+            )
         history_response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
     finally:
         application.dependency_overrides.pop(get_llm_client, None)
@@ -200,6 +228,7 @@ async def test_stream_chat_flow(
     assert [event for event, _ in events] == [
         "sources",
         "delta",
+        "delta",
         "done",
     ]
     assert events[0][1]["sources"][0]["source_id"] == "car-test-shopping-case"
@@ -207,6 +236,12 @@ async def test_stream_chat_flow(
         "正在为您查询物流。"
     )
     assert events[-1][1]["content"] == "正在为您查询物流。"
+    assert "status=completed" in caplog.text
+    assert "delta_count=2" in caplog.text
+    assert "character_count=9" in caplog.text
+    ttft_match = re.search(r"ttft_ms=([0-9.]+)", caplog.text)
+    assert ttft_match is not None
+    assert float(ttft_match.group(1)) >= 0
 
     messages = history_response.json()["messages"]
     assert [message["role"] for message in messages] == ["user", "assistant"]
@@ -219,24 +254,22 @@ async def test_stream_chat_flow(
 async def test_failed_stream_saves_no_messages(
     application: FastAPI,
     api_client: AsyncClient,
+    register_customer,
+    caplog,
 ) -> None:
     application.dependency_overrides[get_llm_client] = lambda: FailingLLMClient()
 
     try:
         suffix = uuid4().hex[:12]
-        create_response = await api_client.post(
-            "/api/v1/conversations",
-            json={
-                "customer_no": f"CUST-STREAM-FAIL-{suffix}",
-                "display_name": "流式失败测试用户",
-            },
-        )
+        await register_customer(f"CUST-STREAM-FAIL-{suffix}", "流式失败测试用户")
+        create_response = await api_client.post("/api/v1/conversations")
         conversation_no = create_response.json()["conversation_no"]
 
-        stream_response = await api_client.post(
-            f"/api/v1/conversations/{conversation_no}/chat/stream",
-            json={"content": "帮我查询订单。"},
-        )
+        with caplog.at_level(logging.INFO, logger="app.chat_stream"):
+            stream_response = await api_client.post(
+                f"/api/v1/conversations/{conversation_no}/chat/stream",
+                json={"content": "帮我查询订单。"},
+            )
         history_response = await api_client.get(f"/api/v1/conversations/{conversation_no}")
     finally:
         application.dependency_overrides.pop(get_llm_client, None)
@@ -245,16 +278,20 @@ async def test_failed_stream_saves_no_messages(
     assert stream_response.status_code == 200
     assert events[-1] == ("error", {"detail": "模拟模型不可用"})
     assert history_response.json()["messages"] == []
+    assert "status=model_error" in caplog.text
+    assert "ttft_ms=-1.00" in caplog.text
+    assert "delta_count=0" in caplog.text
 
 
 async def test_same_customer_can_create_multiple_conversations(
     api_client: AsyncClient,
+    register_customer,
 ) -> None:
     customer_no = f"CUST-MULTI-{uuid4().hex[:12]}"
-    payload = {"customer_no": customer_no, "display_name": "重复会话测试用户"}
+    await register_customer(customer_no, "重复会话测试用户")
 
-    first_response = await api_client.post("/api/v1/conversations", json=payload)
-    second_response = await api_client.post("/api/v1/conversations", json=payload)
+    first_response = await api_client.post("/api/v1/conversations")
+    second_response = await api_client.post("/api/v1/conversations")
 
     assert first_response.status_code == 201
     assert second_response.status_code == 201
@@ -264,19 +301,15 @@ async def test_same_customer_can_create_multiple_conversations(
 async def test_unknown_policy_uses_deterministic_fallback_without_calling_llm(
     application: FastAPI,
     api_client: AsyncClient,
+    register_customer,
 ) -> None:
     fake_llm = FakeLLMClient("退款通常三天到账。")
     application.dependency_overrides[get_llm_client] = lambda: fake_llm
 
     try:
         suffix = uuid4().hex[:12]
-        create_response = await api_client.post(
-            "/api/v1/conversations",
-            json={
-                "customer_no": f"CUST-POLICY-{suffix}",
-                "display_name": "政策边界测试用户",
-            },
-        )
+        await register_customer(f"CUST-POLICY-{suffix}", "政策边界测试用户")
+        create_response = await api_client.post("/api/v1/conversations")
         conversation_no = create_response.json()["conversation_no"]
 
         response = await api_client.post(
@@ -294,7 +327,9 @@ async def test_unknown_policy_uses_deterministic_fallback_without_calling_llm(
 
 async def test_get_missing_conversation_returns_404(
     api_client: AsyncClient,
+    register_customer,
 ) -> None:
+    await register_customer(f"CUST-MISSING-{uuid4().hex[:12]}")
     response = await api_client.get("/api/v1/conversations/CONV-00000000000000000000")
 
     assert response.status_code == 404
@@ -304,20 +339,15 @@ async def test_get_missing_conversation_returns_404(
 async def test_failed_llm_call_does_not_save_messages(
     application: FastAPI,
     api_client: AsyncClient,
+    register_customer,
 ) -> None:
     failing_llm = FailingLLMClient()
     application.dependency_overrides[get_llm_client] = lambda: failing_llm
 
     try:
         suffix = uuid4().hex[:12]
-
-        create_response = await api_client.post(
-            "/api/v1/conversations",
-            json={
-                "customer_no": f"CUST-FAIL-{suffix}",
-                "display_name": "失败事务测试用户",
-            },
-        )
+        await register_customer(f"CUST-FAIL-{suffix}", "失败事务测试用户")
+        create_response = await api_client.post("/api/v1/conversations")
         conversation_no = create_response.json()["conversation_no"]
 
         chat_response = await api_client.post(

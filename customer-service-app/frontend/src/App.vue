@@ -1,10 +1,19 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 
-import { createConversation, getConversation, streamChatMessage } from './api'
+import {
+  createConversation,
+  getConversation,
+  loginCustomer,
+  registerCustomer,
+  streamChatMessage,
+} from './api'
 
 const customerNo = ref('DEMO001')
 const displayName = ref('演示用户')
+const password = ref('demo-password')
+const authMode = ref('register')
+const accessToken = ref('')
 const conversation = ref(null)
 const messages = ref([])
 const sourcesByMessage = ref({})
@@ -21,7 +30,12 @@ const suggestions = [
   '给我来两碗牛肉汤。',
 ]
 
-const canStart = computed(() => customerNo.value.trim() && !isStarting.value)
+const canStart = computed(
+  () =>
+    customerNo.value.trim() &&
+    password.value.length >= 8 &&
+    !isStarting.value,
+)
 const canSend = computed(
   () => conversation.value && draft.value.trim() && !isSending.value,
 )
@@ -43,7 +57,10 @@ async function scrollToBottom() {
 }
 
 async function refreshHistory() {
-  const detail = await getConversation(conversation.value.conversation_no)
+  const detail = await getConversation(
+    conversation.value.conversation_no,
+    accessToken.value,
+  )
   conversation.value = detail
   messages.value = detail.messages.map((message) => ({
     ...message,
@@ -59,10 +76,16 @@ async function startConversation() {
   errorMessage.value = ''
 
   try {
-    conversation.value = await createConversation(
-      customerNo.value.trim(),
-      displayName.value.trim(),
-    )
+    const authResponse =
+      authMode.value === 'register'
+        ? await registerCustomer(
+            customerNo.value.trim(),
+            displayName.value.trim(),
+            password.value,
+          )
+        : await loginCustomer(customerNo.value.trim(), password.value)
+    accessToken.value = authResponse.access_token
+    conversation.value = await createConversation(accessToken.value)
     messages.value = []
     sourcesByMessage.value = {}
   } catch (error) {
@@ -111,6 +134,7 @@ async function sendMessage() {
       conversation.value.conversation_no,
       content,
       idempotencyKey,
+      accessToken.value,
     )) {
       if (streamEvent.event === 'sources') {
         assistantMessage.sources = streamEvent.data?.sources || []
@@ -157,6 +181,7 @@ function resetConversation() {
   draft.value = ''
   errorMessage.value = ''
   failedRequest.value = null
+  accessToken.value = ''
 }
 </script>
 
@@ -181,7 +206,7 @@ function resetConversation() {
         <div class="eyebrow">ECOMMERCE AI SUPPORT</div>
         <h1>让每次回答，都有依据。</h1>
         <p class="welcome-copy">
-          这是一个用于学习和作品展示的电商客服项目。创建会话后，你可以测试多轮对话、知识检索和来源引用。
+          这是一个用于学习和作品展示的电商客服项目。登录后，你可以测试多轮对话、知识检索和来源引用。
         </p>
 
         <div class="feature-row" aria-label="项目能力">
@@ -191,6 +216,22 @@ function resetConversation() {
         </div>
 
         <form class="start-form" @submit.prevent="startConversation">
+          <div class="auth-mode" aria-label="认证方式">
+            <button
+              type="button"
+              :class="{ active: authMode === 'register' }"
+              @click="authMode = 'register'"
+            >
+              注册
+            </button>
+            <button
+              type="button"
+              :class="{ active: authMode === 'login' }"
+              @click="authMode = 'login'"
+            >
+              登录
+            </button>
+          </div>
           <label>
             客户编号
             <input
@@ -201,7 +242,7 @@ function resetConversation() {
               required
             />
           </label>
-          <label>
+          <label v-if="authMode === 'register'">
             显示名称
             <input
               v-model="displayName"
@@ -209,8 +250,26 @@ function resetConversation() {
               placeholder="例如 演示用户"
             />
           </label>
+          <label>
+            密码
+            <input
+              v-model="password"
+              type="password"
+              minlength="8"
+              maxlength="128"
+              autocomplete="current-password"
+              placeholder="至少 8 位"
+              required
+            />
+          </label>
           <button class="primary-button" type="submit" :disabled="!canStart">
-            {{ isStarting ? '正在创建…' : '开始新会话' }}
+            {{
+              isStarting
+                ? '正在进入…'
+                : authMode === 'register'
+                  ? '注册并开始'
+                  : '登录并开始'
+            }}
           </button>
         </form>
 
@@ -253,7 +312,7 @@ function resetConversation() {
             :disabled="isSending"
             @click="resetConversation"
           >
-            创建其他会话
+            退出当前账号
           </button>
         </aside>
 

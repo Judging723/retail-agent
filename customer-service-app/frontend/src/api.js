@@ -1,11 +1,12 @@
 async function request(path, options = {}) {
+  const { headers = {}, ...fetchOptions } = options
   const response = await fetch(path, {
+    ...fetchOptions,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...headers,
     },
-    ...options,
   })
 
   const body = await response.json().catch(() => null)
@@ -19,21 +20,48 @@ async function request(path, options = {}) {
   return body
 }
 
-export function createConversation(customerNo, displayName) {
-  return request('/api/v1/conversations', {
+function authorizationHeader(accessToken) {
+  return { Authorization: `Bearer ${accessToken}` }
+}
+
+export function registerCustomer(customerNo, displayName, password) {
+  return request('/api/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify({
       customer_no: customerNo,
       display_name: displayName || null,
+      password,
     }),
   })
 }
 
-export function sendChatMessage(conversationNo, content, idempotencyKey) {
+export function loginCustomer(customerNo, password) {
+  return request('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ customer_no: customerNo, password }),
+  })
+}
+
+export function createConversation(accessToken) {
+  return request('/api/v1/conversations', {
+    method: 'POST',
+    headers: authorizationHeader(accessToken),
+  })
+}
+
+export function sendChatMessage(
+  conversationNo,
+  content,
+  idempotencyKey,
+  accessToken,
+) {
   const requestKey = idempotencyKey || globalThis.crypto.randomUUID()
   return request(`/api/v1/conversations/${conversationNo}/chat`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': requestKey },
+    headers: {
+      ...authorizationHeader(accessToken),
+      'Idempotency-Key': requestKey,
+    },
     body: JSON.stringify({ content }),
   })
 }
@@ -42,6 +70,7 @@ export async function* streamChatMessage(
   conversationNo,
   content,
   idempotencyKey,
+  accessToken,
 ) {
   const requestKey = idempotencyKey || globalThis.crypto.randomUUID()
   const response = await fetch(
@@ -51,6 +80,7 @@ export async function* streamChatMessage(
       headers: {
         Accept: 'text/event-stream',
         'Content-Type': 'application/json',
+        ...authorizationHeader(accessToken),
         'Idempotency-Key': requestKey,
       },
       body: JSON.stringify({ content }),
@@ -119,6 +149,8 @@ function parseSseBlock(block) {
   }
 }
 
-export function getConversation(conversationNo) {
-  return request(`/api/v1/conversations/${conversationNo}`)
+export function getConversation(conversationNo, accessToken) {
+  return request(`/api/v1/conversations/${conversationNo}`, {
+    headers: authorizationHeader(accessToken),
+  })
 }

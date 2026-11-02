@@ -11,6 +11,7 @@ from app.rag.retriever import (
     KnowledgeRetriever,
     RetrievedDocument,
 )
+from app.rag.runtime import KnowledgeRuntime, KnowledgeSearcher, RuntimeStatus
 
 __all__ = [
     "DEFAULT_COLLECTION_NAME",
@@ -22,6 +23,9 @@ __all__ = [
     "BM25SearchResult",
     "CrossEncoderReranker",
     "KnowledgeRetriever",
+    "KnowledgeRuntime",
+    "KnowledgeSearcher",
     "PairReranker",
     "RetrievedDocument",
+    "RuntimeStatus",
 ]

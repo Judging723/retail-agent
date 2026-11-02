@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -6,17 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.agents import CustomerSupportAgent, OrderToolExecutor
-from app.llm import ChatMessage, LLMClient
+from app.llm import ChatMessage, LLMClient, LLMUnavailableError
 from app.models import (
     Conversation,
     ConversationStatus,
-    Customer,
     Message,
     MessageRole,
 )
 from app.policies import policy_fallback
 from app.prompts import DEFAULT_SYSTEM_PROMPT
-from app.rag import KnowledgeRetriever, RetrievedDocument
+from app.rag import KnowledgeSearcher, RetrievedDocument
 
 
 class ConversationNotFoundError(Exception):
@@ -37,6 +37,12 @@ class PreparedChat:
     deterministic_response: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ChatStreamEvent:
+    content_delta: str | None = None
+    completed_message: Message | None = None
+
+
 class ConversationService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -44,44 +50,33 @@ class ConversationService:
     async def create_conversation(
         self,
         *,
-        customer_no: str,
-        display_name: str | None,
-    ) -> tuple[Conversation, Customer]:
+        customer_id: int,
+    ) -> Conversation:
         async with self._session.begin():
-            customer = await self._session.scalar(
-                select(Customer).where(Customer.customer_no == customer_no)
-            )
-
-            if customer is None:
-                customer = Customer(
-                    customer_no=customer_no,
-                    display_name=display_name,
-                )
-                self._session.add(customer)
-                await self._session.flush()
-
             conversation = Conversation(
                 conversation_no=self._generate_conversation_no(),
-                customer_id=customer.id,
+                customer_id=customer_id,
             )
             self._session.add(conversation)
             await self._session.flush()
 
             await self._session.refresh(conversation)
 
-        return conversation, customer
+        return conversation
 
     async def chat(
         self,
         *,
         conversation_no: str,
+        customer_id: int,
         user_content: str,
         llm_client: LLMClient,
-        knowledge_retriever: KnowledgeRetriever,
+        knowledge_retriever: KnowledgeSearcher,
         idempotency_key: str | None = None,
     ) -> tuple[Message, list[RetrievedDocument]]:
         prepared_chat = await self.prepare_chat(
             conversation_no=conversation_no,
+            customer_id=customer_id,
             user_content=user_content,
             knowledge_retriever=knowledge_retriever,
         )
@@ -128,15 +123,59 @@ class ConversationService:
 
         return assistant_message
 
+    async def stream_prepared_chat(
+        self,
+        *,
+        prepared_chat: PreparedChat,
+        user_content: str,
+        llm_client: LLMClient,
+        idempotency_key: str | None = None,
+    ) -> AsyncIterator[ChatStreamEvent]:
+        content_parts: list[str] = []
+
+        if prepared_chat.deterministic_response is not None:
+            content_parts.append(prepared_chat.deterministic_response)
+            yield ChatStreamEvent(content_delta=prepared_chat.deterministic_response)
+        else:
+            agent = CustomerSupportAgent(
+                llm_client=llm_client,
+                order_tool_executor=OrderToolExecutor(self._session),
+            )
+            async for content_delta in agent.stream_respond(
+                prepared_chat.prompt,
+                conversation_id=prepared_chat.conversation_id,
+                customer_id=prepared_chat.customer_id,
+                idempotency_key=idempotency_key
+                or (
+                    f"conversation:{prepared_chat.conversation_id}:"
+                    f"sequence:{prepared_chat.next_sequence}"
+                ),
+            ):
+                content_parts.append(content_delta)
+                yield ChatStreamEvent(content_delta=content_delta)
+
+        assistant_content = "".join(content_parts).strip()
+        if not assistant_content:
+            raise LLMUnavailableError("Model service returned an empty response")
+
+        message = await self.save_chat_exchange(
+            conversation_id=prepared_chat.conversation_id,
+            next_sequence=prepared_chat.next_sequence,
+            user_content=user_content,
+            assistant_content=assistant_content,
+        )
+        yield ChatStreamEvent(completed_message=message)
+
     async def prepare_chat(
         self,
         *,
         conversation_no: str,
+        customer_id: int,
         user_content: str,
-        knowledge_retriever: KnowledgeRetriever,
+        knowledge_retriever: KnowledgeSearcher,
     ) -> PreparedChat:
         async with self._session.begin():
-            conversation = await self._find_conversation(conversation_no)
+            conversation = await self._find_conversation(conversation_no, customer_id)
             self._ensure_available(conversation, conversation_no)
 
             next_sequence = (
@@ -207,19 +246,27 @@ class ConversationService:
     async def get_conversation(
         self,
         conversation_no: str,
+        customer_id: int,
     ) -> Conversation:
         async with self._session.begin():
-            conversation = await self._find_conversation(conversation_no)
+            conversation = await self._find_conversation(conversation_no, customer_id)
 
             if conversation is None:
                 raise ConversationNotFoundError
 
         return conversation
 
-    async def _find_conversation(self, conversation_no: str) -> Conversation | None:
+    async def _find_conversation(
+        self,
+        conversation_no: str,
+        customer_id: int,
+    ) -> Conversation | None:
         statement = (
             select(Conversation)
-            .where(Conversation.conversation_no == conversation_no)
+            .where(
+                Conversation.conversation_no == conversation_no,
+                Conversation.customer_id == customer_id,
+            )
             .options(
                 selectinload(Conversation.customer),
                 selectinload(Conversation.messages),

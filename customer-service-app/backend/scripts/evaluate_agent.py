@@ -15,7 +15,13 @@ from app.agents import CUSTOMER_SERVICE_TOOLS
 from app.core.config import get_settings
 from app.llm import OpenAICompatibleLLMClient
 from app.prompts import DEFAULT_SYSTEM_PROMPT
-from benchmarks import evaluate_agent_cases, load_agent_cases, summarize_agent_results
+from benchmarks import (
+    classify_agent_failure,
+    evaluate_agent_cases,
+    load_agent_cases,
+    summarize_agent_failures,
+    summarize_agent_results,
+)
 
 DEFAULT_CASES_PATH = BACKEND_ROOT / "benchmarks" / "agent_cases.json"
 
@@ -68,6 +74,7 @@ async def run_evaluation(args: argparse.Namespace) -> None:
             json.dumps(CUSTOMER_SERVICE_TOOLS, ensure_ascii=False, sort_keys=True)
         ),
         "summary": summary.as_dict(),
+        "failure_summary": summarize_agent_failures(results),
         "results": [result.as_dict() for result in results],
     }
 
@@ -77,11 +84,13 @@ async def run_evaluation(args: argparse.Namespace) -> None:
     print(f"tool_case_end_to_end_accuracy={summary.tool_case_end_to_end_accuracy:.3f}")
     print(f"argument_accuracy_when_tool_correct={summary.argument_accuracy_when_tool_correct:.3f}")
     print(f"no_tool_accuracy={summary.no_tool_accuracy:.3f}")
+    print(f"failure_summary={json.dumps(summarize_agent_failures(results), sort_keys=True)}")
     for result in results:
         if not result.tool_selection_correct or result.arguments_correct is False:
             print(
                 f"FAIL {result.case_id} expected={result.expected_tool} "
-                f"predicted={list(result.predicted_tools)} error={result.error}"
+                f"predicted={list(result.predicted_tools)} "
+                f"failure_type={classify_agent_failure(result)} error={result.error}"
             )
 
     if args.output is not None:

@@ -29,6 +29,10 @@ class Customer(TimestampMixin, Base):
         String(100),
         nullable=True,
     )
+    password_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
 
     conversations: Mapped[list[Conversation]] = relationship(
         back_populates="customer",
